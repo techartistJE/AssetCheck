@@ -1,0 +1,158 @@
+{
+    "errorData": {
+        "errorCount": 0,
+        "category": {
+            "general": {
+                "id": 0,
+                "uiText": "전체공통",
+                "checkListCount": 8,
+                "checkList": {
+                    "unfreeze": {
+                        "id": 0,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "Freeze 안된 트랜스폼이 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "pivot": {
+                        "id": 1,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "각각의 Pivot이 월드 0,0,0 에 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "history": {
+                        "id": 2,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "History가 남아있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "animkey": {
+                        "id": 3,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "애니메이션 키가 남아있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "layer": {
+                        "id": 4,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "레이어가 남아있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "defaultShader": {
+                        "id": 5,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "씬 파일에 기본 쉐이더만 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "defaultCamera": {
+                        "id": 6,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "씬 파일에 기본 카메라만 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "perspective": {
+                        "id": 7,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "씬 파일이 Perspective 카메라로 설정되어 있는지 확인",
+                        "function": "perspVeiw",
+                        "isActive": true
+                    },
+                    "unKwonNode": {
+                        "id": 8,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "알수없는 노드가 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    }
+
+                }
+            },
+            "model": {
+                "id": 1,
+                "uiText": "모델링",
+                "checkListCount": 3,
+                "checkList": {
+                    "ngon": {
+                        "id": 0,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "N-gon Face가 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "selfIntersect": {
+                        "id": 1,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "자기자신과 겹침이 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "objectIntersect": {
+                        "id": 2,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "오브젝트간 겹침이 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    }
+                }
+                
+            },
+            "naming": {
+                "id": 2,
+                "uiText": "네이밍",
+                "checkListCount": 2,
+                "checkList": {
+                    "duplicatedNames": {
+                        "id": 0,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "중복된 이름이 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    },
+                    "namespace": {
+                        "id": 1,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "네임스페이스가 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    }
+                }
+            },
+            "uv": {
+                "id": 3,
+                "uiText": "UV",
+                "checkListCount": 2,
+                "checkList": {
+                    "overlappingUV": {
+                        "id": 0,
+                        "errorCount": 0,
+                        "errorTarget": [],
+                        "checkBoxText": "오버랩된 UV가 있는지 확인",
+                        "function": "",
+                        "isActive": true
+                    }
+                    
+                }
+            }
+        }
+    }
+}

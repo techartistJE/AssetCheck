@@ -1,0 +1,41 @@
+{
+    "inputData": {
+        "count": 0,
+        "category":
+        {
+            "mesh":
+            {
+                "count": 0,
+                "inputList": [],
+                "errorDict":{
+                }
+
+            },
+            "nullGroup":
+            {
+                "count": 0,
+                "inputList": [],
+                "errorDict":{
+                }
+
+            },
+            "etcNode":
+            {
+                "count": 0,
+                "inputList": [],
+                "errorDict":{
+                }
+
+            },
+            "scene":
+            {
+                "count": 0,
+                "inputList": [],
+                "errorDict":{
+                }
+            }
+        
+
+        }
+    }
+}
