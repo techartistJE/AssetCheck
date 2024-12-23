@@ -68,15 +68,18 @@ class mainWin(QMainWindow):
         self.AllInputList= []
         self.inputDataDict = loadJsonData(inputDataPath)["inputData"]
         self.errorDataDict = loadJsonData(errorDataPath)
+        self.sceneCheckCount = 0
         self.allTargetCount = 0
         self.ui = AssetCheck_ui.AssetCheckWidgetUI(self.errorDataDict)
         self.setCentralWidget(self.ui)
+       
 
         self.resize(1200, 600)
         # splliter position at middle of the window
         self.ui.mainSplitter.setSizes([600, 600])
 
         self.ui.inputButton.clicked.connect(self.updateInputTable)
+        self.ui.runButton.clicked.connect(self.checkboxOnOffUpdate)
 
     def nodeFilter(self, inputNodeList):
         # ignore shape node
@@ -84,6 +87,7 @@ class mainWin(QMainWindow):
         # scnene : camera, material
         # filer type and input count to inputDataDict
 
+        # print("inputNodeList: ", inputNodeList)
         meshList = []
         nullGroupList = []
         etcNodeList = []
@@ -93,12 +97,15 @@ class mainWin(QMainWindow):
         for node in inputNodeList:
             
             omNode= simple_om_object.SimpleOMObject(node)
-         
+            """ print("node: ", node)
+            print(omNode.objectType)
+            print("isShape: ", str(omNode.IsShape))
+            print(omNode.transformName)
+            print(omNode.ShapeName) """
             
             # ignore shape node
-            if omNode.ShapeName:
-                if omNode.selectedNodeName == omNode.ShapeName:
-                    continue
+            if omNode.IsShape:
+                continue
             #print(node)
             if omNode.objectType == 'mesh':
                 meshList.append(omNode)
@@ -111,7 +118,7 @@ class mainWin(QMainWindow):
                 etcNodeList.append(omNode)
             
         
-        """  print("========= result ===============")
+        """ print("========= result ===============")
         for node in meshList:
             print(node.shortName(node.selectedNodeName))
         print("================================")
@@ -119,8 +126,8 @@ class mainWin(QMainWindow):
             print(node.shortName(node.selectedNodeName))
         print("================================")
         for node in etcNodeList:
-            print(node.shortName(node.selectedNodeName)) 
-        """
+            print(node.shortName(node.selectedNodeName))  """
+       
 
         filterdList.append(meshList)
         filterdList.append(nullGroupList)
@@ -139,28 +146,62 @@ class mainWin(QMainWindow):
         allSceneNode = cmds.ls(assemblies=True, long=True, dag=True)
         
         self.selInputList = self.nodeFilter(selectedNode)
-        self.selCountList= self.countList(self.selInputList)
+        self.selCountList= self.createCountList(self.selInputList)
         
         self.AllInputList = self.nodeFilter(allSceneNode)
-        self.AllCountList = self.countList(self.AllInputList)
+        self.AllCountList = self.createCountList(self.AllInputList)
     
-    def countList(self, inputList):
+    def createCountList(self, inputList):
         allCount= 0
         countList=[0]*5
         for i in range(3):
             countList[1+i]= len(inputList[i])
-            allCount += countList[i]
+            allCount += countList[1+i]
         countList[0]= allCount
       
         return countList
     
     def countSceneCheckList(self):
-        # material, camera, etc
-        checkListCount= 0
-        pass
+        # find all checkList that 'isSceneRelated' is true in the errorData
+        self.sceneCheckCount = 0
+        allCategory = self.errorDataDict["errorData"]["category"]
+        
+        for category in allCategory.values():
+            checkListDict = category.get("checkList", {})
+            for checkOption in checkListDict.values():
+                if checkOption.get("isSceneRelated", True):
+                    if checkOption.get("isActive", True):
+                        self.sceneCheckCount  += 1
+        self.selCountList[4] = self.sceneCheckCount
+        self.AllCountList[4] = self.sceneCheckCount
+        
+
+    def checkboxOnOffUpdate(self):
+        # check checkbox status
+        # update errorDataDict
+        
+        for catergoryName, checkDict in self.ui.allCheckboxesDict.items():
+            for checkName, checkboxWidget in checkDict.items():
+                onoffState = checkboxWidget.isChecked()
+                self.errorDataDict["errorData"]["category"][catergoryName]["checkList"][checkName]["isActive"] = onoffState
+                #print(catergoryName, checkName, onoffState)
+        
+        """ for categroyName, errorData in self.errorDataDict["errorData"]["category"].items():
+            print(categroyName)
+            for checkName, checkData in errorData["checkList"].items():
+                print(checkName, checkData["isActive"]) """
+
+
+
 
     def updateInputTable(self):
+        # 대상 입력 후 필터링한 결과만 남기기
         self.inputNode()
+        # 전체 체크 박스 상태 확인
+        self.checkboxOnOffUpdate()
+        # 씬 관련 활성화 된 체크리스트를 세서 카운트 리스트 업데이트허기기
+        self.countSceneCheckList()
+        
         if self.selCountList[0] == 0:
             self.ui.inputTable.selectRow(0)
         else:
@@ -178,12 +219,9 @@ class mainWin(QMainWindow):
                 tableItem.setTextAlignment(Qt.AlignCenter)
                 tableItem.setFont(QFont("Arial", 12))
                 self.ui.inputTable.setItem(i, j, tableItem)
-
-
-
-         
-
         
+
+
 
 def run():
     

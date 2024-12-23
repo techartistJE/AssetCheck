@@ -13,6 +13,7 @@ class SimpleOMObject(object):
         self.coreNodeName = nodeName
         self.ConnectedDeformerAsDeformed = []
         self.ConnectedDeformerAsDeformer = []
+        self.IsShape = False
         self.IsDeformer = False
         self.IsDeformed = False
         self.objectType = None
@@ -52,18 +53,39 @@ class SimpleOMObject(object):
                     self.objectType= cmds.nodeType(nodeName)
                     self.coreNodeName= nodeName
             else:
+                # shape node has a transform node as a parent
+                # ex1 parent: deformerHandle, child: deformerShape
+                # ex2 parent: transform, child: locatorShape
+                # ex3 parent: transform, child: meshShape
+                # ex4 parent: transform, child: nurbsCurveShape
+                # ex5 parent: light, child: lightShape
 
-                self.ShapeName = nodeName
-                self.objectType = cmds.nodeType(nodeName)
-                self.coreNodeName= nodeName
-
+                # not shape node but also not transform node (ex: joint)
+                # caution: paretnt of parent: transform, parent: joint3, child: joint4
+                # caution: Constraint node (point, orient, scale, aim) can have transform node as a parent
+                
                 parentNode = cmds.listRelatives(nodeName, p=True)
                 if parentNode:
+                    if cmds.nodeType(parentNode[0]) == 'transform':
+
+                        self.transformName = parentNode[0]
+                        self.ShapeName = nodeName
+                        self.IsShape = True
+                        self.objectType= cmds.nodeType(nodeName)
+                        self.coreNodeName= nodeName
+                        if cmds.nodeType(nodeName) == 'joint':
+                            self.objectType= 'joint'
+                            self.transformName = None
+                            self.ShapeName = None
+                            self.IsShape = False
+                        elif "Constraint" in cmds.nodeType(nodeName):
+                            self.objectType= 'constraint'
+                            self.transformName = None
+                            self.ShapeName = None
+                            self.IsShape = False
                     self.transformName = parentNode[0]
 
-                if cmds.nodeType(nodeName) == 'joint':
-                    self.transformName = None
-                    self.ShapeName = None
+ 
 
         else:
             #print("Not Dag & DependencyNode")

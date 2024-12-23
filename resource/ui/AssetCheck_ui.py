@@ -8,6 +8,7 @@ class AssetCheckWidgetUI(QWidget):
         super(AssetCheckWidgetUI, self).__init__()
         self.setObjectName("AssetCheckWidgetUI")
         self.errorData = jsonData["errorData"]  # Accessing the root "errorData"
+        self.sceneCheckCount = 0
         
         self.initUI()
         self.createModelCleanUpCheckboxes()
@@ -67,6 +68,8 @@ class AssetCheckWidgetUI(QWidget):
         self.leftWidget.setLayout(self.leftLayout)
         return self.leftWidget
 
+
+
     def createInputTable(self):
         """Create and configure the input table."""
         table = QTableWidget()
@@ -85,6 +88,7 @@ class AssetCheckWidgetUI(QWidget):
         layout = QHBoxLayout()
 
         self.CategoryCheckboxDict = {}
+        self.allCheckboxesDict = {}
         categoryDict = self.errorData["category"]
         
         # create checkboxList sized by the number of categories
@@ -113,23 +117,27 @@ class AssetCheckWidgetUI(QWidget):
         tabWidget = QTabWidget()
         tabWidget.setObjectName("optionTab")
 
-        for category_id, category_data in self.errorData["category"].items():
-            tabWidget.addTab(self.createCategoryTab(category_data), category_data["uiText"])
+        for categoryName, category_data in self.errorData["category"].items():
+            tabWidget.addTab(self.createCategoryTab(categoryName, category_data), category_data["uiText"])
 
         return tabWidget
 
-    def createCategoryTab(self, category_data):
+    def createCategoryTab(self, categoryName, category_data):
         """Create a tab for a specific category."""
         tab = QWidget()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         layout = QVBoxLayout()
-
-        for check_id, check_data in category_data.get("checkList", {}).items():
-            checkbox = QCheckBox(check_data.get("checkBoxText", check_id))
+        
+        self.allCheckboxesDict[categoryName]= {}
+        for checkName, check_data in category_data.get("checkList", {}).items():
+            
+            checkbox = QCheckBox(check_data.get("checkBoxText", checkName))
             # text size 12 point
             checkbox.setStyleSheet("font-size: 11pt")
             checkbox.setChecked(check_data.get("isActive", True))
+
+            self.allCheckboxesDict[categoryName][checkName] = checkbox
             layout.addWidget(checkbox)
 
         tab.setLayout(layout)
