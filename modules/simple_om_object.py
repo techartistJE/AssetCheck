@@ -41,7 +41,7 @@ class SimpleOMObject(object):
             #print("DagNode")
             currentNodeType= cmds.nodeType(nodeName)
             if currentNodeType == 'transform':
-                if cmds.listRelatives(nodeName, shapes=True):
+                if cmds.listRelatives(nodeName, shapes=True, fullPath=True):
                     self.transformName = nodeName
                     self.ShapeName = cmds.listRelatives(nodeName, fullPath=1,shapes=True)[0]
                     
@@ -64,7 +64,9 @@ class SimpleOMObject(object):
                 # caution: paretnt of parent: transform, parent: joint3, child: joint4
                 # caution: Constraint node (point, orient, scale, aim) can have transform node as a parent
                 
-                parentNode = cmds.listRelatives(nodeName, p=True)
+
+                parentNode = cmds.listRelatives(nodeName, p=True, fullPath=True)
+
                 if parentNode:
                     if cmds.nodeType(parentNode[0]) == 'transform':
 

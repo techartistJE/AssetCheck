@@ -1,0 +1,24 @@
+QPushButton {
+    font-size: 12pt;
+    font-weight: bold;
+    background-color: #DD6E13;
+}
+QCheckBox {
+    font-size: 11pt;
+}
+
+QTableWidget {
+    font-size: 11pt;
+}
+
+QTableWidget::item {
+    text-align: center;
+}
+
+QListWidget {
+    font-size: 11pt;
+}
+
+QTreeWidget {
+    font-size: 11pt;
+}

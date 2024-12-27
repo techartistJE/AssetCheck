@@ -1,10 +1,12 @@
 from PySide2.QtCore import *
 from PySide2.QtGui import *
 from PySide2.QtWidgets import *
+from functools import partial
+
 
 
 class AssetCheckWidgetUI(QWidget):
-    def __init__(self, jsonData):
+    def __init__(self, jsonData, uiStylePath):
         super(AssetCheckWidgetUI, self).__init__()
         self.setObjectName("AssetCheckWidgetUI")
         self.errorData = jsonData["errorData"]  # Accessing the root "errorData"
@@ -13,6 +15,11 @@ class AssetCheckWidgetUI(QWidget):
         self.initUI()
         self.createModelCleanUpCheckboxes()
         self.functionConnect()
+        self.sceneRelatedCheckBoxList = self.getSceneRelatedCheckBoxList()
+        
+        
+        with open(uiStylePath, "r") as f:
+            self.setStyleSheet(f.read())
         
 
     def initUI(self):
@@ -36,7 +43,7 @@ class AssetCheckWidgetUI(QWidget):
         # text size 12 point and bold font
         # dark orange background color
         
-        self.inputButton.setStyleSheet("font-size: 12pt; font-weight: bold; background-color: #DD6E13")
+
         self.inputButton.setObjectName("inputButton")
         self.inputButton.setFixedHeight(30)
 
@@ -94,7 +101,6 @@ class AssetCheckWidgetUI(QWidget):
         # create checkboxList sized by the number of categories
         for categoryDataDict in self.errorData["category"].values():
             checkBox = QCheckBox(categoryDataDict["uiText"])
-            checkBox.setStyleSheet("font-size: 12pt")
             checkBox.setChecked(True)
             layout.addWidget(checkBox)
             self.CategoryCheckboxDict[categoryDataDict["id"]] = checkBox
@@ -133,8 +139,6 @@ class AssetCheckWidgetUI(QWidget):
         for checkName, check_data in category_data.get("checkList", {}).items():
             
             checkbox = QCheckBox(check_data.get("checkBoxText", checkName))
-            # text size 12 point
-            checkbox.setStyleSheet("font-size: 11pt")
             checkbox.setChecked(check_data.get("isActive", True))
 
             self.allCheckboxesDict[categoryName][checkName] = checkbox
@@ -159,11 +163,11 @@ class AssetCheckWidgetUI(QWidget):
         # Create custom checkboxes
         vertexFreezeCheckbox = QCheckBox("Vertex 값 초기화")
         vertexFreezeCheckbox.setChecked(True)
-        vertexFreezeCheckbox.setStyleSheet("font-size: 11pt")
+
 
         conformNormalCheckbox = QCheckBox("전체 Conform Normal 적용")
         conformNormalCheckbox.setChecked(True)
-        conformNormalCheckbox.setStyleSheet("font-size: 11pt")
+
 
         # Add widgets to the layout
         layout.addWidget(divider)
@@ -178,7 +182,6 @@ class AssetCheckWidgetUI(QWidget):
 
         # Run Button
         self.runButton = QPushButton("검사 시작")
-        self.runButton.setStyleSheet("font-size: 12pt; font-weight: bold; background-color: #DD6E13")
         self.runButton.setFixedHeight(30)
         self.runButton.setObjectName("runButton")
 
@@ -192,15 +195,15 @@ class AssetCheckWidgetUI(QWidget):
         # Tab2: By Element
         self.errorResultTab.addTab(self.createErrorByElementTab(), "대상별 Error 기준")
 
-        # All Result Text
+        """ # All Result Text
         self.allResult = QPlainTextEdit()
         self.allResult.setObjectName("allResult")
-        self.allResult.setReadOnly(True)
+        self.allResult.setReadOnly(True) """
 
         # Right Layout
         self.rightLayout.addWidget(self.runButton)
         self.rightLayout.addWidget(self.errorResultTab)
-        self.rightLayout.addWidget(self.allResult)
+        #self.rightLayout.addWidget(self.allResult)
         self.rightWidget.setLayout(self.rightLayout)
 
         return self.rightWidget
@@ -212,12 +215,14 @@ class AssetCheckWidgetUI(QWidget):
 
         table = QTableWidget()
         table.setObjectName("errorByCriteriaTable")
-        table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Error Count", "점검 필요 Count"])
+        table.setColumnCount(1)
+        table.setHorizontalHeaderLabels(["Error Count"])
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         listWidget = QListWidget()
-        listWidget.setObjectName("errorElementList")
+        listWidget.setObjectName("errorItemList")
+        listWidget.setSelectionMode(QAbstractItemView.MultiSelection)
 
         layout.addWidget(table)
         layout.addWidget(listWidget)
@@ -235,24 +240,42 @@ class AssetCheckWidgetUI(QWidget):
         nameFilter.setPlaceholderText("Name Filter")
 
         listWidget = QListWidget()
-        listWidget.setObjectName("errorByElementList")
+        listWidget.setObjectName("errorByNodeList")
 
         leftLayout.addWidget(nameFilter)
         leftLayout.addWidget(listWidget)
 
-        criteriaList = QListWidget()
-        criteriaList.setObjectName("errorCriteriaList")
+        criteriaTree = QTreeWidget()
+        criteriaTree.setObjectName("errorcriteriaTree")
+        criteriaTree.setHeaderLabels(["Error Count"])
+        criteriaTree.setColumnCount(1)
+
 
         layout.addLayout(leftLayout)
-        layout.addWidget(criteriaList)
+        layout.addWidget(criteriaTree)
         widget.setLayout(layout)
         return widget
 
-
+    def getSceneRelatedCheckBoxList(self):
+        allCategory = self.errorData.get("category", {})
+        sceneRelatedCheckBoxList = []
+        for categoryName, categoryDict in allCategory.items():
+            
+            checkListDict = categoryDict.get("checkList", {})
+            for checkName, checkListDict in checkListDict.items():
+                if checkListDict.get("isSceneRelated", False):
+                    
+                    checkboxWidget = self.allCheckboxesDict[categoryName][checkName]
+                    sceneRelatedCheckBoxList.append(checkboxWidget)
+        return sceneRelatedCheckBoxList
+        
+      
+    def findWidget(self, parentWidget, widgetName):
+        for widget in parentWidget.findChildren(QWidget):
+            if widget.objectName() == widgetName:
+                return widget
+        return None 
+    
     def functionConnect(self):
-        
-        for id in range(len(self.CategoryCheckboxDict.items())):
-            checkbox= self.CategoryCheckboxDict[id]
-            state= checkbox.checkState()
-            checkbox.stateChanged.connect(lambda state=state, id=id: self.toggleCategory(state, id))
-        
+        for id, checkbox in self.CategoryCheckboxDict.items():
+            checkbox.stateChanged.connect(partial(self.toggleCategory, category_id=id))
