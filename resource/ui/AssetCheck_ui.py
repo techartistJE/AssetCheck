@@ -50,6 +50,7 @@ class AssetCheckWidgetUI(QWidget):
         # Input Table
         self.inputTable = self.createInputTable()
         self.inputTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.inputTable.setSelectionMode(QAbstractItemView.SingleSelection)
         self.inputTable.selectRow(0)
         self.inputTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.inputTable.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -193,7 +194,7 @@ class AssetCheckWidgetUI(QWidget):
         self.errorResultTab.addTab(self.createErrorByCriteriaTab(), "기준별 Error 대상")
 
         # Tab2: By Element
-        self.errorResultTab.addTab(self.createErrorByElementTab(), "대상별 Error 기준")
+        self.errorResultTab.addTab(self.createErrorByTargetTab(), "대상별 Error 기준")
 
         """ # All Result Text
         self.allResult = QPlainTextEdit()
@@ -221,7 +222,7 @@ class AssetCheckWidgetUI(QWidget):
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         listWidget = QListWidget()
-        listWidget.setObjectName("errorItemList")
+        listWidget.setObjectName("errorTargetListA")
         listWidget.setSelectionMode(QAbstractItemView.MultiSelection)
 
         layout.addWidget(table)
@@ -229,7 +230,7 @@ class AssetCheckWidgetUI(QWidget):
         widget.setLayout(layout)
         return widget
 
-    def createErrorByElementTab(self):
+    def createErrorByTargetTab(self):
         """Create the error-by-element tab."""
         widget = QWidget()
         layout = QHBoxLayout()
@@ -240,13 +241,15 @@ class AssetCheckWidgetUI(QWidget):
         nameFilter.setPlaceholderText("Name Filter")
 
         listWidget = QListWidget()
-        listWidget.setObjectName("errorByNodeList")
+        listWidget.setObjectName("errorTargetListB")
 
         leftLayout.addWidget(nameFilter)
         leftLayout.addWidget(listWidget)
 
         criteriaTree = QTreeWidget()
-        criteriaTree.setObjectName("errorcriteriaTree")
+        criteriaTree.setSelectionMode(QAbstractItemView.MultiSelection)
+        criteriaTree.setAlternatingRowColors(True)
+        criteriaTree.setObjectName("errorCriteriaTree")
         criteriaTree.setHeaderLabels(["Error Count"])
         criteriaTree.setColumnCount(1)
 

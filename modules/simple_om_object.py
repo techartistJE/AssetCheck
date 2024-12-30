@@ -32,7 +32,7 @@ class SimpleOMObject(object):
     def shortName(self, nodeName ):
         # if node name is long like |group1|group2|group3|nodeName, return only nodeName
         if '|' in nodeName:
-            nodeName = nodeName.split('|')[-1]
+            nodeName = nodeName.rsplit('|', 1)[1]
         return nodeName
     
     def getObjectState(self, nodeName):

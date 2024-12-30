@@ -31,26 +31,30 @@ def unfreezeTransform(nodeList):
     translateAttList= ['tx', 'ty', 'tz']
     rotateAttList= ['rx', 'ry', 'rz']
     scaleAttList= ['sx', 'sy', 'sz']
+    AllunfreezeAttrList= []
     for node in nodeList:
         nodeName= node.selectedNodeName
         isErrorWithNode=False
+        unfreezeAttrList = []
         for att in translateAttList:
             
             if cmds.getAttr(nodeName+'.'+att)!=0:
                 isErrorWithNode=True
-                break
+                unfreezeAttrList.append(nodeName +'.'+ att)
         for att in rotateAttList:
             if cmds.getAttr(nodeName+'.'+att)!=0:
                 isErrorWithNode=True
-                break
+                unfreezeAttrList.append(nodeName +'.'+ att)
         for att in scaleAttList:
             if cmds.getAttr(nodeName+'.'+att)!=1:
                 isErrorWithNode=True
-                break
+                unfreezeAttrList.append(nodeName +'.'+ att)
         if isErrorWithNode:
             errorNodeList.append(node)
+            AllunfreezeAttrList.append(unfreezeAttrList)
             errorCount+=1
-    return(errorCount, errorNodeList)
+    
+    return(errorCount, errorNodeList, AllunfreezeAttrList)
                 
 def pivotAtWorldCenter(nodeList):
     # check if the pivot of the transform node is at the world center
@@ -71,14 +75,17 @@ def history(nodeList):
     # 노드 리스트 중 transform 노드에 히스토리가 있는지 확인
     errorNodeList=[]
     errorCount=0
+    AllHistoryList=[]
     for node in nodeList:
         nodeName= node.selectedNodeName
-        history= cmds.listHistory(nodeName, pruneDagObjects=True)
-        if history:
+        historyList= cmds.listHistory(nodeName, pruneDagObjects=True)
+        if historyList:
             errorNodeList.append(node)
+            AllHistoryList.append(historyList)
             errorCount+=1
-
-    return(errorCount, errorNodeList)
+        else:
+            historyList =[]
+    return(errorCount, errorNodeList, AllHistoryList)
 
 def perspView():
     # Viewport panel Check
@@ -95,29 +102,30 @@ def perspView():
         if cmds.getPanel(typeOf=panel) == 'modelPanel':
             # 패널에 연결된 카메라 쿼리
             camera = cmds.modelEditor(panel, query=True, camera=True)
-            camera_setup.append((panel, camera))
+            camera_setup.append(panel +':' + camera)
 
     # Check: modelPanel is one and it is set to perspective view
     # 모델 패널이 하나이고, 그 패널이 퍼스펙티브 뷰인지 확인
     
     if len(camera_setup) == 1:
-        for panel, camera in camera_setup:
-            print(panel, camera)
+        for cameraData in camera_setup:
+            camera = cameraData.split(":")[1]
             if camera == '|persp':
                 return (0, [])
             else:
-                return (1, camera_setup)
+                return (1, ["scene"], [camera_setup] )
     else:
         # 패널이 여러개이면 그 중 하나가 perspective인지 확인
         isPersp = False
-        for panel, camera in camera_setup:
+        for cameraData in camera_setup:
+            camera = cameraData.split(":")[1]
             if camera == '|persp':
                 isPersp = True
                 break
         if isPersp:
             return (0, [])
         else:
-            return (1, camera_setup)
+            return (1, ["scene"], [camera_setup])
         
    
 def animKey(nodeList):
@@ -143,7 +151,7 @@ def layer():
     
     if layers:
         
-        return (1, layers)
+        return (1, ["scene"], [layers])
     else:
    
         return (0, None)
@@ -164,9 +172,10 @@ def onlyDefaultMaterial():
     allMaterials = cmds.ls(materials=True)
     defaultMaterials = ["lambert1", "standardSurface1", "particleCloud1"]
     allMaterials = [material for material in allMaterials if material not in defaultMaterials]
+   
     if allMaterials:
         
-        return (1, allMaterials)
+        return (1, ["scene"], [allMaterials])
     else:
  
         return (0, None)
@@ -179,7 +188,7 @@ def onlyDefaultCamera():
     allCamera = [camera for camera in allCamera if camera not in dafaultCamera]
     if allCamera:
      
-        return (1, allCamera)
+        return (1, ["scene"], [allCamera])
     else:
         
         return (0, None)
@@ -187,14 +196,19 @@ def onlyDefaultCamera():
 def unKnown():
     # check if there are unknown nodes or plugin in the scene
     unknownPlugin = cmds.unknownPlugin(q=True, list=True)
-
+    if not unknownPlugin:
+        unknownPlugin = []
     unknownNodes = cmds.ls(type="unknown")
     unknownNodes += cmds.ls(type="unknownDag")
     unknownNodes += cmds.ls(type="unknownTransform")
-    
+    if not unknownNodes:
+        unknownNodes = []
+    detailUnkownList = []
+    detailUnkownList.extend(unknownPlugin)
+    detailUnkownList.extend(unknownNodes)
     if unknownPlugin or unknownNodes:
         
-        return (1, (unknownPlugin, unknownNodes))
+        return (1, ["scene"], [detailUnkownList] )
     else:
         
         return (0, ())

@@ -6,13 +6,17 @@ def duplicatedNames(nodeList):
     # check if there are duplicated names in the scene
     errorCount=0
     errorNodeList=[]
+    AllDuplicatedList=[]
     for node in nodeList:
-        nodeName= node.shortName(node.selectedNodeName)
-        nodeList= cmds.ls(nodeName)
+        shortName= node.shortName(node.selectedNodeName)
+        nodeList= cmds.ls(shortName, long=1)
         if len(nodeList)>1:
             errorCount+=1
             errorNodeList.append(node)
-    return (errorCount, errorNodeList)
+            nodeList.remove(node.selectedNodeName)
+            AllDuplicatedList.append(nodeList)
+
+    return (errorCount, errorNodeList, AllDuplicatedList)
 
 
 def nameSpace():
@@ -26,7 +30,7 @@ def nameSpace():
     if namespaces:
         errorCount+=1
     
-    return (errorCount, namespaces)
+    return (errorCount, ["scene"], [namespaces])
     
 
 
@@ -37,7 +41,7 @@ def shapeName(nodeList):
     # pCylinder10 -> pCylinderShape10
     errorCount=0
     errorNodeList=[]
-
+   
     for node in nodeList:
         if node.ShapeName :
             nodeName= node.selectedNodeName

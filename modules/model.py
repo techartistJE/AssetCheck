@@ -32,7 +32,7 @@ def ngonFace(nodeList):
         if NGonList:
             errorCount+=1
             errorNodeList.append(node)
-            AllNgonList+=NGonList
+            AllNgonList.append(NGonList)
 
     return (errorCount, errorNodeList, AllNgonList)
     
