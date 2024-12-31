@@ -28,8 +28,7 @@ class AssetCheckWidgetUI(QWidget):
         self.mainSplitter = QSplitter(Qt.Horizontal)
         self.mainSplitter.addWidget(self.initLeftPanel())
         self.mainSplitter.addWidget(self.initRightPanel())
-        self.mainSplitter.setStretchFactor(1, 1)
-
+        self.mainSplitter.setStretchFactor(1, 3)
         self.mainLayout = QVBoxLayout()
         self.mainLayout.addWidget(self.mainSplitter)
         self.setLayout(self.mainLayout)
@@ -77,7 +76,7 @@ class AssetCheckWidgetUI(QWidget):
         table = QTableWidget()
         table.setObjectName("inputTable")
         table.setColumnCount(5)
-        table.setHorizontalHeaderLabels(["All Count", "Mesh", "Null Group", "Etc Node", "SceneFile"])
+        table.setHorizontalHeaderLabels(["All Count", "Mesh", "Null Group", "Etc Node", "Scene File"])
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setRowCount(2)
         table.setVerticalHeaderLabels(["Global", "Selected\nHierarchy"])
@@ -191,7 +190,10 @@ class AssetCheckWidgetUI(QWidget):
         table.setColumnCount(1)
         table.setHorizontalHeaderLabels(["Error Count"])
         table.setSelectionMode(QAbstractItemView.SingleSelection)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # 열 크기 모드 설정
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        table.horizontalHeader().setStretchLastSection(True)  # 마지막 열 확장
 
         listWidget = QListWidget()
         listWidget.setObjectName("errorTargetListA")
@@ -199,7 +201,8 @@ class AssetCheckWidgetUI(QWidget):
 
         layout.addWidget(table)
         layout.addWidget(listWidget)
-        layout.setStretch(1,2)
+        layout.setStretch(0, 3)  # 테이블 확장 비율
+        layout.setStretch(1, 2)  # 리스트 확장 비율
         widget.setLayout(layout)
         return widget
 
@@ -222,7 +225,7 @@ class AssetCheckWidgetUI(QWidget):
         criteriaTree.setSelectionMode(QAbstractItemView.MultiSelection)
         criteriaTree.setAlternatingRowColors(True)
         criteriaTree.setObjectName("errorCriteriaTree")
-        criteriaTree.setHeaderLabels(["Error Count"])
+        criteriaTree.setHeaderLabels(["Error Count :"])
         criteriaTree.setColumnCount(1)
 
         layout.addLayout(leftLayout)

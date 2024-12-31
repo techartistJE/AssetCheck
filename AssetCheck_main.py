@@ -23,12 +23,12 @@ import AssetCheck.resource.ui.AssetCheck_ui as AssetCheck_ui
 import AssetCheck.modules.general as general
 import AssetCheck.modules.model as model
 import AssetCheck.modules.naming as naming
-import AssetCheck.modules.UV as UV
+import AssetCheck.modules.uv as uv
 
 import AssetCheck.modules.simple_om_object as simple_om_object
 
 import importlib
-for module in [AssetCheck_ui, general, model, naming, UV, simple_om_object]:
+for module in [AssetCheck_ui, general, model, naming, uv, simple_om_object]:
     importlib.reload(module)
 
 def getMayaWindow():
@@ -56,8 +56,8 @@ class mainWin(QMainWindow):
         self.sceneRelatedCheckBoxList = self.ui.sceneRelatedCheckBoxList
 
         self.setCentralWidget(self.ui)
-        self.resize(1200, 600)
-        self.ui.mainSplitter.setSizes([600, 600])
+        self.resize(1400, 800)
+        self.ui.mainSplitter.setSizes([700, 700])
         self.updateInputTable()
 
         self.uiFuncConnect()
@@ -79,7 +79,7 @@ class mainWin(QMainWindow):
 
         for checkbox in self.sceneRelatedCheckBoxList:
             checkbox.stateChanged.connect(self.updateSceneCheckCount)
-
+    # ---------------------------- Input Table ----------------------------
     def updateInputTable(self):
         isSelected= self.inputNode()
        
@@ -156,6 +156,7 @@ class mainWin(QMainWindow):
         tableCouintList[-1] = self.sceneCheckCount
 
         return tableCouintList
+    # ---------------------------- Error Check ----------------------------
 
     def errorCheckRun(self):
         if self.ui.inputTable.currentRow() == 0:
@@ -290,9 +291,15 @@ class mainWin(QMainWindow):
             criteriaHeaderItem.setData(Qt.UserRole, category)
         
         criteriaTable.setHorizontalHeaderLabels(["Error Count : " + str(allErrorCount)])
+        # font size 12 center align
+        criteriaTable.horizontalHeaderItem(0).setFont(QFont("Arial", 12))
+        criteriaTable.horizontalHeaderItem(0).setTextAlignment(Qt.AlignCenter)
+        criteriaTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        criteriaTable.horizontalHeader().setStretchLastSection(True)
         # Resize row and column
+       
+        criteriaTable.resizeColumnsToContents()
         criteriaTable.resizeRowsToContents()
-        criteriaTable.resizeColumnToContents(0)
 
         # Connect selection change to update listWidgetA
         criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
@@ -303,9 +310,7 @@ class mainWin(QMainWindow):
         # Step 3: Update errorTargetListB
         self.updateErrorTargetListB()
 
-        
-
-
+ 
     def populateErrorList(self, listWidget, errorNodeList, isShortPath):
         """
         Populates a given listWidget with error nodes.
@@ -391,6 +396,7 @@ class mainWin(QMainWindow):
 
             topLevelItem = QTreeWidgetItem()
             topLevelItem.setText(0, checkName)
+            topLevelItem.setTextAlignment(0, Qt.AlignCenter)
             treeWidget.addTopLevelItem(topLevelItem)
 
 
@@ -590,8 +596,10 @@ class mainWin(QMainWindow):
         for i in range(root.childCount()):
             topItem = root.child(i)
             color = QColor(70, 70, 70) if i % 2 == 0 else QColor(80, 80, 80)
-            for col in range(treeWidget.columnCount()):
+            for col in range(topItem.columnCount()):
                 topItem.setBackground(col, color)
+      
+            
 
 def run():
     if cmds.window("AssetCheck_win", exists=True):
