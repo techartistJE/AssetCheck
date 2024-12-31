@@ -19,7 +19,7 @@ def duplicatedNames(nodeList):
     return (errorCount, errorNodeList, AllDuplicatedList)
 
 
-def nameSpace():
+def nameSpace(_inputList):
     # check if namespace is in the scene
     errorCount=0
 
@@ -28,9 +28,10 @@ def nameSpace():
     namespaces = [ns for ns in namespaces if ns not in defaultNamespaces]
     
     if namespaces:
-        errorCount+=1
     
-    return (errorCount, ["scene"], [namespaces])
+        errorCount+=1
+
+    return (errorCount, ["scene"], namespaces)
     
 
 

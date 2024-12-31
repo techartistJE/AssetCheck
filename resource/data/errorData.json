@@ -1,190 +1,148 @@
 {
     "errorData": {
-        "errorCount": 0,
-        "category": {
+        "nodes": {},
+        "errors": {
             "general": {
                 "id": 0,
                 "uiText": "전체 공통",
-                "checkListCount": 8,
                 "checkList": {
                     "unfreeze": {
                         "id": 0,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "Freeze 안된 트랜스폼이 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "pivot": {
                         "id": 1,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "각각의 Pivot이 월드 0,0,0 에 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
-
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "history": {
                         "id": 2,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "History가 남아있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "animkey": {
                         "id": 3,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "애니메이션 키가 남아있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "layer": {
                         "id": 4,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "레이어가 남아있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "hidden": {
                         "id": 5,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "씬 파일에 숨겨진 오브젝트가 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "defaultMaterial": {
                         "id": 6,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "씬 파일에 기본 머티리얼만 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "defaultCamera": {
                         "id": 7,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "씬 파일에 기본 카메라만 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "perspView": {
                         "id": 8,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "씬 파일이 Perspective 카메라로 설정되어 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "unKnown": {
                         "id": 9,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "erorrTargetList": [],
                         "checkBoxText": "알 수 없는 플러그인/노드가 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     }
-
                 }
             },
             "model": {
                 "id": 1,
                 "uiText": "모델링",
-                "checkListCount": 3,
                 "checkList": {
                     "ngon": {
                         "id": 0,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "N-gon Face가 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "selfIntersect": {
                         "id": 1,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "자기자신과 겹침이 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     },
                     "objectIntersect": {
                         "id": 2,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "오브젝트간 겹침이 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     }
                 }
-                
             },
             "naming": {
                 "id": 2,
                 "uiText": "네이밍",
-                "checkListCount": 2,
                 "checkList": {
                     "duplicatedNames": {
                         "id": 0,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "중복된 이름이 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "nameSpace": {
                         "id": 1,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "네임스페이스가 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     },
                     "shapeName": {
                         "id": 2,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "Shape 이름이 규칙에 어긋나는게 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": true
+                        "isSceneRelated": true,
+                        "nodes": []
                     }
                 }
             },
             "UV": {
                 "id": 3,
                 "uiText": "UV",
-                "checkListCount": 2,
                 "checkList": {
                     "overlappingUV": {
                         "id": 0,
-                        "errorCount": 0,
-                        "errorOmTarget": [],
-                        "errorTargetList": [],
                         "checkBoxText": "오버랩된 UV가 있는지 확인",
                         "isActive": true,
-                        "isSceneRelated": false
+                        "isSceneRelated": false,
+                        "nodes": []
                     }
-                    
                 }
             }
         }

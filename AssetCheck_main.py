@@ -5,7 +5,6 @@ from PySide2.QtGui import *
 import maya.OpenMayaUI as mui
 import maya.cmds as cmds
 
-
 import shiboken2
 import sys
 import os
@@ -14,15 +13,11 @@ import json
 try:
     RootDir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     pkgPath = os.path.dirname(os.path.abspath(__file__))
-    inputDataPath = os.path.join(pkgPath, 'resource','data', 'inputData.json')
-    errorDataPath = os.path.join(pkgPath, 'resource','data', 'errorData.json')
-    uiStylePath = os.path.join(pkgPath, 'resource', 'ui','uiStyle.css')
-    
-
+    inputDataPath = os.path.join(pkgPath, 'resource', 'data', 'inputData.json')
+    errorDataPath = os.path.join(pkgPath, 'resource', 'data', 'errorData.json')
+    uiStylePath = os.path.join(pkgPath, 'resource', 'ui', 'uiStyle.css')
 except:
     pkgPath = 'D:\myScript\maya\AssetCheck'
-
-
 
 import AssetCheck.resource.ui.AssetCheck_ui as AssetCheck_ui
 import AssetCheck.modules.general as general
@@ -32,57 +27,41 @@ import AssetCheck.modules.UV as UV
 
 import AssetCheck.modules.simple_om_object as simple_om_object
 
-
 import importlib
 for module in [AssetCheck_ui, general, model, naming, UV, simple_om_object]:
     importlib.reload(module)
 
-
-
 def getMayaWindow():
     ptr = mui.MQtUtil.mainWindow()
-    if sys.version_info >= (3, 0):
-        return shiboken2.wrapInstance(int(ptr), QWidget)
-    else:
-        return shiboken2.wrapInstance(long(ptr), QWidget)
-    
+    return shiboken2.wrapInstance(int(ptr), QWidget)
+
 def loadJsonData(jsonPath):
-    with open(jsonPath, 'r', encoding= "utf-8") as f:
-        errorDataDict = json.load(f)
-    return errorDataDict
+    with open(jsonPath, 'r', encoding="utf-8") as f:
+        return json.load(f)
 
 class mainWin(QMainWindow):
     def __init__(self):
-        super(mainWin, self).__init__(parent =getMayaWindow() )
+        super(mainWin, self).__init__(parent=getMayaWindow())
         self.setObjectName("AssetCheck_win")
         self.setWindowTitle("AssetCheck")
 
-        self.selInputList= []
-        self.AllInputList= []
-        self.inputDataDict = loadJsonData(inputDataPath)["inputData"]
-        self.resultDataInit()
+        self.selInputList = []
+        self.AllInputList = []
         
-        self.errorByNodeDict = {"mesh": {}, "nullGroup": {}, "etcNode": {}, "scene": {}}
-        
+        self.errorData = loadJsonData(errorDataPath)["errorData"]
+
         self.sceneCheckCount = 0
-        self.allTargetCount = 0
-        self.ui = AssetCheck_ui.AssetCheckWidgetUI(self.errorDataDict, uiStylePath)
+        self.ui = AssetCheck_ui.AssetCheckWidgetUI(self.errorData, uiStylePath)
 
-        self.sceneRelatedCheckBoxList= self.ui.sceneRelatedCheckBoxList
-  
-            
+        self.sceneRelatedCheckBoxList = self.ui.sceneRelatedCheckBoxList
+
         self.setCentralWidget(self.ui)
-       
-
         self.resize(1200, 600)
-        # splliter position at middle of the window
         self.ui.mainSplitter.setSizes([600, 600])
         self.updateInputTable()
 
         self.uiFuncConnect()
 
-
-         # 각 위젯별 경로 상태 플래그
         self.is_short_path_listA = True
         self.is_short_path_listB = True
         self.is_short_path_tree = True
@@ -99,24 +78,62 @@ class mainWin(QMainWindow):
         self.ui.runButton.clicked.connect(self.errorCheckRun)
 
         for checkbox in self.sceneRelatedCheckBoxList:
-            checkbox.stateChanged.connect(self.sceneRelatedCheckboxCountUpdate)
-  
+            checkbox.stateChanged.connect(self.updateSceneCheckCount)
+
+    def updateInputTable(self):
+        isSelected= self.inputNode()
+       
+        if isSelected:
+            self.ui.inputTable.selectRow(1)
+        else:
+            self.ui.inputTable.selectRow(0)
+        self.updateSceneCheckCount()
+        self.updateInputTableUI()
+
+    def updateSceneCheckCount(self):
+       
+        self.sceneCheckCount = sum(1 for checkbox in self.sceneRelatedCheckBoxList if checkbox.isChecked())
+        self.AllCountList[-1] = self.sceneCheckCount
+        self.selCountList[-1] = self.sceneCheckCount
+        self.updateInputTableUI()
+
+    def updateInputTableUI(self):
+        for row in range(2):
+            for col in range(5):
+                if row == 0:
+                    value = self.AllCountList[col]
+                else:
+                    value = self.selCountList[col]
+                item = QTableWidgetItem(str(value))
+                item.setTextAlignment(Qt.AlignCenter)
+                item.setFont(QFont("Arial", 12))
+                self.ui.inputTable.setItem(row, col, item)
+
+    def inputNode(self):
+        outliner = cmds.getPanel(type='outlinerPanel')[0]
+        cmds.outlinerEditor(outliner, edit=True, showDagOnly=True)
+
+        selectedNode = cmds.ls(sl=True, long=True, dag=True)
+        allSceneNode = cmds.ls(assemblies=True, long=True, dag=True)
+
+        self.selInputList = self.nodeFilter(selectedNode)
+        self.selCountList = self.createCountList(self.selInputList)
+
+        self.AllInputList = self.nodeFilter(allSceneNode)
+        self.AllCountList = self.createCountList(self.AllInputList)
+
+        if selectedNode:
+            return True
+        else:
+            return False
+
+
     def nodeFilter(self, inputNodeList):
-        # ignore shape node
-        # etc node: curve, deformer, constraint, camera, light
-        # scnene : camera, material
-        # filer type and input count to inputDataDict
+        meshList, nullGroupList, etcNodeList = [], [], []
+        defaultCameras = {"persp", "top", "front", "side"}
 
-        meshList = []
-        nullGroupList = []
-        etcNodeList = []
-
-        dafaultCamera = ["persp", "top", "front", "side"]
-        filterdList = []
         for node in inputNodeList:
-            
-            omNode= simple_om_object.SimpleOMObject(node)
-            # ignore shape node
+            omNode = simple_om_object.SimpleOMObject(node)
             if omNode.IsShape:
                 continue
 
@@ -124,486 +141,464 @@ class mainWin(QMainWindow):
                 meshList.append(omNode)
             elif omNode.objectType == 'transform':
                 nullGroupList.append(omNode)
-            else:
-                if omNode.objectType == 'camera':
-                    if omNode.shortName(node) in dafaultCamera:
-                        continue
+            elif omNode.objectType != 'camera' or omNode.shortName(node) not in defaultCameras:
                 etcNodeList.append(omNode)
 
-    
-        return ( [meshList, nullGroupList, etcNodeList])
+        return [meshList, nullGroupList, etcNodeList]
 
-    def inputNode(self):
-        # check dagObject only Mode is on
-        # Outliner 이름 가져오기 (기본값은 'outlinerPanel1')
-        outliner = cmds.getPanel(type='outlinerPanel')[0]
-        # DAG Objects Only 켜기
-        cmds.outlinerEditor(outliner, edit=True, showDagOnly=True)
-
-        selectedNode = cmds.ls(sl=True, long=True, dag=True)
-        allSceneNode = cmds.ls(assemblies=True, long=True, dag=True)
-        
-        self.selInputList = self.nodeFilter(selectedNode)
-        self.selCountList= self.createCountList(self.selInputList)
-        
-        self.AllInputList = self.nodeFilter(allSceneNode)
-        self.AllCountList = self.createCountList(self.AllInputList)
-    
     def createCountList(self, inputList):
+        tableCouintList = [0, 0, 0, 0, 0]
         allCount= 0
-        # countList: [allCount, meshCount, nullGroupCount, etcNodeCount, sceneRelatedCount]
-        countList=[0]*5
-        for i in range(3):
-            countList[1+i]= len(inputList[i])
-            allCount += countList[1+i]
-        countList[0]= allCount
-      
-        return countList
+        for id, group in enumerate(inputList):
+            tableCouintList[id+1] = len(group)
+            allCount += len(group)
+        tableCouintList[0] = allCount
+        tableCouintList[-1] = self.sceneCheckCount
+
+        return tableCouintList
+
+    def errorCheckRun(self):
+        if self.ui.inputTable.currentRow() == 0:
+            inputList = self.AllInputList
+        else:
+            inputList = self.selInputList
     
-    def countSceneCheckList(self):
-        # find all checkList that 'isSceneRelated' is true in the errorData
-        self.sceneCheckCount = 0
-        for checkbox in self.ui.sceneRelatedCheckBoxList:
-            if checkbox.isChecked():
-                self.sceneCheckCount  += 1
-        self.selCountList[4] = self.sceneCheckCount
-        self.AllCountList[4] = self.sceneCheckCount
+        # Steop 0: errorData 초기화
+        self.errorData = loadJsonData(errorDataPath)["errorData"]
 
+        # Step 1: Update isActive status based on checkbox state
+        for category, categoryData in self.errorData["errors"].items():
+            for checkName, checkData in categoryData["checkList"].items():
+                self.errorData["errors"][category]["checkList"][checkName]["isActive"] = self.ui.allCheckboxesDict[category][checkName].isChecked()
 
-    def sceneRelatedCheckboxCountUpdate(self):
-        self.countSceneCheckList()
-        self.ui.inputTable.item(0, 4).setText(str(self.sceneCheckCount))
-        self.ui.inputTable.item(1, 4).setText(str(self.sceneCheckCount))
+        # Step 2: Run error checks
+        for categoryName, categoryData in self.errorData["errors"].items():
+            for checkName, checkData in categoryData["checkList"].items():
+                if checkData["isActive"]:
+                    errorCount, nodes, detail = self.runEachErrorCheck(categoryName, checkName, inputList)
+                    checkData["nodes"] = nodes
+                    checkData["errorCount"] = len(nodes)
+
+                    for id, node in enumerate(nodes):
+                        if isinstance(node, str):
+                            nodeName = node
+                        else:
+                            nodeName = node.selectedNodeName
+
+                        # Initialize nodeName if not present
+                        if nodeName not in self.errorData["nodes"]:
+                            self.errorData["nodes"][nodeName] = {}
+
+                        # Validate detail and store data
+                        if not isinstance(detail, list):
+                            print(f"Invalid detail structure for node '{nodeName}': {detail}")
+                            continue
+
+                        if detail:
+                            self.errorData["nodes"][nodeName][checkName] = detail[id]
+                        else:
+                            self.errorData["nodes"][nodeName][checkName] = []
+                       
+
+        # Step 3: Update UI with results
+        self.resultUIUpdate()
+
+    def runEachErrorCheck(self, category, checkName, inputList):
+        """
+        Run the error check for a specific category and check name.
         
-    def resultDataInit(self):
-        self.errorDataDict ={"nodes":{}, "errors":{}}
-        self.errorDataDict = loadJsonData(errorDataPath)
-        # errorCritera별 에러 노드 리스트 저장
-        self.errorToTargetDataDict = {}
-        # 타겟별 error 목록과 세부내용 저장
-        self.targetToErrorDataDict = {}
-
+        Args:
+            category (str): The category of the error check (e.g., "general").
+            checkName (str): The specific check name (e.g., "unfreeze").
+            inputList (list): The full input list to be processed.
         
-    def allcheckboxOnOffUpdate(self):
-        # check checkbox status
-        # update errorDataDict
-        for catergoryName, checkDict in self.ui.allCheckboxesDict.items():
-            for checkName, checkboxWidget in checkDict.items():
-                self.errorDataDict["errorData"]["category"][catergoryName]["checkList"][checkName]["isActive"] = checkboxWidget.isChecked()
-
-
-    def updateInputTable(self):
-        # 대상 입력 후 필터링한 결과만 남기기
-        self.inputNode()
-        # 전체 체크 박스 상태 확인
-        self.allcheckboxOnOffUpdate()
-        # 씬 관련 활성화 된 체크리스트를 세서 카운트 리스트 업데이트허기기
-        self.countSceneCheckList()
+        Returns:
+            tuple: (errorCount, errorNodes)
+        """
+        result = self.getCheckFunction(category, checkName)
+        if result == None:
+            print(f"Skipping check '{checkName}' in category '{category}' as it is not implemented.")
+            return 0, [], []
         
-        if self.selCountList[0] == 0:
-            self.ui.inputTable.selectRow(0)
+        func, inputRange = result
+
+        # Apply input range if specified
+        if isinstance(inputRange, slice):
+            filteredInput = inputList[inputRange]
+        elif isinstance(inputRange, int):
+            filteredInput = [inputList[inputRange]]
         else:
-            self.ui.inputTable.selectRow(1)
-            
-        # row 2 column 5
-        for i in range(2):
-            for j in range(5):
-                if i == 0:
-                    text = str(self.AllCountList[j])
-                else:
-                    text = str(self.selCountList[j])
-                # tableItem text size 12 and align center
-                tableItem = QTableWidgetItem(text)
-                tableItem.setTextAlignment(Qt.AlignCenter)
-                tableItem.setFont(QFont("Arial", 12))
-                self.ui.inputTable.setItem(i, j, tableItem)
+            filteredInput = inputList  # Default: use full list
 
-    def updateCriteriaTable(self):
-        self.isActiveDict = {}
-        for categoryName, categoryData in self.errorDataDict["errorData"]["category"].items():
-            isActiveList = []
-            for checkName, stateData in categoryData.get("checkList", {}).items():
-                onOff= stateData.get("isActive")
-                if onOff:
-                    isActiveList.append(checkName)
-            self.isActiveDict[categoryName] = isActiveList
-       
-
-    def unPackInputRePackResult(self, check_func, parmList, IsDetailResult = False):
-        
-        AllErrorCount = 0
-        AllErrorList = []
-        detailResultList = []
-
-        for inputNodeList in parmList:
-            result = check_func(inputNodeList)  
-        
-            if len(result) == 2:
-                errorCount, errorNodeList = result
-            else:
-                errorCount, errorNodeList, detailResult = result
-                detailResultList.extend( detailResult)
-            AllErrorCount += errorCount
-            AllErrorList += errorNodeList
-
-        if IsDetailResult:
-
-            return AllErrorCount, AllErrorList, detailResultList
-        else:
-
-            return AllErrorCount, AllErrorList
-
-    def errorCheckFuncMatch(self, category, checkName):
-    
-        sceneRelatedList = ["layer", "hidden", "defaultMaterial", "defaultCamera", "perspView", "unKnown", "duplicatedNames", "nameSpace", "shapeName"]
-        category_func_map = {
-            "general": {
-                "unfreeze": lambda: self.unPackInputRePackResult(general.unfreezeTransform, self.inputList[:-1], True),
-                "pivot": lambda: self.unPackInputRePackResult(general.pivotAtWorldCenter, self.inputList[:-1]),
-                "history": lambda: self.unPackInputRePackResult(general.history, self.inputList[:-1], True),
-                "animkey": lambda: self.unPackInputRePackResult(general.animKey, self.inputList),
-                "layer": lambda: general.layer(),
-                "hidden": lambda: self.unPackInputRePackResult(general.hidden, self.inputList),
-                "defaultMaterial": lambda: general.onlyDefaultMaterial(),
-                "defaultCamera": lambda: general.onlyDefaultCamera(),
-                "perspView": lambda: general.perspView(),
-                "unKnown" : lambda: general.unKnown(),
-            },
-            "model": {
-                "ngon": lambda: self.unPackInputRePackResult(model.ngonFace, [self.inputList[0]], True),
-            },
-            "naming": {
-                "duplicatedNames": lambda: self.unPackInputRePackResult(naming.duplicatedNames, self.inputList, True),
-                "nameSpace": lambda: naming.nameSpace(),
-                "shapeName": lambda: self.unPackInputRePackResult(naming.shapeName, self.inputList),
-            },
-            # UV와 기타 카테고리 나중에 추가
-        }
-
-        func = category_func_map.get(category, {}).get(checkName)
-        
-   
-        if func:
-            result = func()
-       
-            if len(result) == 2:
-                errorCount, errorNodeList = result
-                detailResult = []
+        # Run the check function with the filtered input
+        allErrorNodes = []
+        allDetail = []
+        allErrorCount = 0
+        for group in filteredInput:
              
+            result= func(group)
+            if len(result) == 2:
+                errorCount, errorNodes = result
+                details = []
             else:
-                # error has detailResult 
-                # model: ngon
-                # scene: defaultMaterial, defaultCamera, perspView, unKnown
-                errorCount, errorNodeList, detailResult = result
-            
-            # update targetToErrorDataDict
-            # left nodeName, right errorList
-            if errorCount:
+                errorCount, errorNodes, details = result
+
+            allErrorCount += errorCount
+            allErrorNodes.extend(errorNodes)
+            allDetail.append(details)
+        
+        return allErrorCount, allErrorNodes, allDetail
+
+    def resultUIUpdate(self):
+        """
+        Updates the UI with the error check results.
+        """
       
-                for id, node in enumerate(errorNodeList):
-                    # check if keyward: nodeName is already in targetToErrorDataDict
-                    if isinstance(node, simple_om_object.SimpleOMObject):
-                        nodeName = node.selectedNodeName
-                    else:
-                        nodeName = node
-             
-                    if nodeName in self.targetToErrorDataDict.keys():
-                        if detailResult:
-                            self.targetToErrorDataDict[nodeName]["errorList"][checkName] = detailResult[id]
-                        else:
-                            self.targetToErrorDataDict[nodeName]["errorList"][checkName] = []
-              
-                    else:
-                        # initialize targetToErrorDataDict[nodeName]
-                        self.targetToErrorDataDict[nodeName] = {}
-                        self.targetToErrorDataDict[nodeName]["omNode"] = node
-                        self.targetToErrorDataDict[nodeName]["type"] = category
-                        if "errorList" not in self.targetToErrorDataDict[nodeName].keys():
-                            self.targetToErrorDataDict[nodeName]["errorList"] = {}
-                        if detailResult:
-                            self.targetToErrorDataDict[nodeName]["errorList"][checkName] = detailResult[id]
-                        else:
-                            self.targetToErrorDataDict[nodeName]["errorList"][checkName] = []
-  
-            
+        # Step 1: Update errorByCriteriaTable
+        criteriaTable = self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
+        criteriaTable.clearContents()
+        resultTableData = []
 
-            self.errorDataDict["errorData"]["category"][category]["checkList"][checkName]["errorCount"] = errorCount
-            self.errorDataDict["errorData"]["category"][category]["checkList"][checkName]["errorNodeList"] = errorNodeList
-            
-            self.errorToTargetDataDict[checkName] = errorNodeList 
-            if errorNodeList:
-                if errorNodeList[0] == 'scene':
-                    AllDetailResult = []
-                    for detail in detailResult:
-                        AllDetailResult+= detail
-                    self.errorToTargetDataDict[checkName] = AllDetailResult
-
-
-        else:
-            print(f"Unknown check: {category}.{checkName}")
-
-    # update result table and list
-    def CriteriaToTargetTable(self):
-        table= self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
-        
-        resultTableData= []
-        for category, checkList in self.errorDataDict["errorData"]["category"].items():
+        for category, checkList in self.errorData["errors"].items():
             for checkName, checkData in checkList.get("checkList", {}).items():
-                errorCount= checkData.get("errorCount", 0)
-                errorNodeList= checkData.get("errorNodeList", [])
-                if errorCount:
+                errorCount = checkData.get("errorCount", 0)
+                errorNodeList = checkData.get("nodes", [])
+                if errorCount > 0:
                     resultTableData.append([category, checkName, errorCount, errorNodeList])
+
+        criteriaTable.setRowCount(len(resultTableData))
+
+        allErrorCount = 0
+        for i, data in enumerate(resultTableData):
+            category, checkName, errorCount, errorNodeList = data
+
+            # Set category and checkName
+            criteriaHeaderItem = QTableWidgetItem(checkName)
+            criteriaHeaderItem.setFont(QFont("Arial", 12))
+            criteriaHeaderItem.setTextAlignment(Qt.AlignCenter)
+            criteriaTable.setVerticalHeaderItem(i, criteriaHeaderItem)
+
+            # Set error count
+            countItem = QTableWidgetItem(str(errorCount))
+            countItem.setFont(QFont("Arial", 12))
+            countItem.setTextAlignment(Qt.AlignCenter)
+            criteriaTable.setItem(i, 0, countItem)
+
+            allErrorCount += errorCount
+
+            # set data: category
+            criteriaHeaderItem.setData(Qt.UserRole, category)
         
-        table.setRowCount(len(resultTableData))
-        for i, dataList in enumerate(resultTableData):
-            # vertical header : checkName
-            headerItem = QTableWidgetItem(dataList[1])
-            headerItem.setFont(QFont("Arial", 12))
-            headerItem.setTextAlignment(Qt.AlignCenter)
-            table.setVerticalHeaderItem(i,headerItem)
+        criteriaTable.setHorizontalHeaderLabels(["Error Count : " + str(allErrorCount)])
+        # Resize row and column
+        criteriaTable.resizeRowsToContents()
+        criteriaTable.resizeColumnToContents(0)
 
-            itemWidget = QTableWidgetItem(str(dataList[2]))
-            itemWidget.setTextAlignment(Qt.AlignCenter)
-            table.setItem(i, 0, QTableWidgetItem(itemWidget))
+        # Connect selection change to update listWidgetA
+        criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
 
+        # Step 2: Update errorTargetListA
+        criteriaTable.setCurrentCell(0, 0)
 
-        table.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
-        table.setCurrentCell(0, 0)
+        # Step 3: Update errorTargetListB
+        self.updateErrorTargetListB()
+
         
+
+
+    def populateErrorList(self, listWidget, errorNodeList, isShortPath):
+        """
+        Populates a given listWidget with error nodes.
+        Args:
+            listWidget (QListWidget): The widget to update.
+            errorNodeList (list): The list of error nodes to display.
+            isShortPath (bool): Whether to display shortPath (True) or fullPath (False).
+        """
+
+        for node in errorNodeList:
+            nodeName = node if isinstance(node, str) else node.selectedNodeName
+            shortName = self.PathToshortName(nodeName)
+
+            itemWidget = QListWidgetItem(shortName if isShortPath else nodeName)
+            itemWidget.setData(Qt.UserRole, nodeName)
+            itemWidget.setData(Qt.UserRole + 1, shortName)
+            listWidget.addItem(itemWidget)
 
     def showErrorTargetByCriteria(self):
         """
-        에러 기준별로 타겟을 리스트에 표시하고 초기 설정에 따라 shortPath 또는 fullPath로 설정.
+        Updates errorTargetListA based on the selected criteria in the errorByCriteriaTable.
         """
         tableWidget = self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
-        listWidget = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListA")
-        listWidget.clear()
+        listWidgetA = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListA")
 
         currentItem = tableWidget.currentItem()
         if not currentItem:
             return
+        listWidgetA.clear()
+        currentRow = currentItem.row()
+        currentHeader = tableWidget.verticalHeaderItem(currentRow)
+        category = currentHeader.data(Qt.UserRole)
 
-        headetItem = tableWidget.verticalHeaderItem(currentItem.row())
-        errorItemList = self.errorToTargetDataDict.get(headetItem.text(), [])
+     
+        errorNodeList = self.errorData["errors"][category]["checkList"][currentHeader.text()]["nodes"]
+        if "scene" in errorNodeList:
+            errorNodeList = self.errorData["nodes"]["scene"][currentHeader.text()]
+        self.populateErrorList(listWidgetA, errorNodeList, self.is_short_path_listA)
 
-        for errorItem in errorItemList:
-            if isinstance(errorItem, simple_om_object.SimpleOMObject):
-                full_path = errorItem.selectedNodeName
-            else:
-                full_path = errorItem
-
-            short_path = self.PathToshortName(full_path)
-
-            # ListWidgetItem 생성 및 데이터 저장
-            itemWidget = QListWidgetItem(short_path if self.is_short_path_listA else full_path)
-            itemWidget.setData(Qt.UserRole, full_path)  # fullPath 저장
-            itemWidget.setData(Qt.UserRole + 1, short_path)  # shortPath 저장
-
-            listWidget.addItem(itemWidget)
-
+       
     
-
-    def updateErrorTargetList(self):
+    def updateErrorTargetListB(self):
         """
-        에러 타겟 리스트를 업데이트하고 초기 설정에 따라 shortPath 또는 fullPath로 설정.
+        Updates errorTargetListB with all nodes that have errors.
         """
-        listWidget = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
-        listWidget.clear()
+        listWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
+        errorNodes = list(self.errorData["nodes"].keys())
 
-        errorNodeList = list(self.targetToErrorDataDict.keys())
+        listWidgetB.clear()
+        self.populateErrorList(listWidgetB, errorNodes, self.is_short_path_listB)
 
-        for nodeName in errorNodeList:
-            full_path = nodeName
-            short_path = self.PathToshortName(full_path)
+        
+        listWidgetB.itemSelectionChanged.connect(self.updateErrorTreeByNode)
+        if listWidgetB.count() > 0:
+            listWidgetB.setCurrentRow(0)
 
-            # ListWidgetItem 생성 및 데이터 저장
-            itemWidget = QListWidgetItem(short_path if self.is_short_path_listB else full_path)
-            itemWidget.setData(Qt.UserRole, full_path)  # fullPath 저장
-            itemWidget.setData(Qt.UserRole + 1, short_path)  # shortPath 저장
-
-            listWidget.addItem(itemWidget)
-
-        # 선택 변경 시 에러 트리 업데이트 연결
-        listWidget.itemSelectionChanged.connect(self.updateErrorTreeByNode)
-
-        # 리스트가 비어 있지 않다면 첫 번째 항목 선택
-        if listWidget.count() > 0:
-            listWidget.setCurrentRow(0)
-
-
-    
     def updateErrorTreeByNode(self):
         """
-        선택된 노드의 에러 리스트를 트리에 표시하고 초기 설정에 따라 shortPath 또는 fullPath로 설정.
+        Updates errorCriteriaTree based on the selected criteria.
         """
-        listWidget = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
+        ListWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
         treeWidget = self.ui.findWidget(self.ui.errorResultTab, "errorCriteriaTree")
+     
 
-        currentWidget = listWidget.currentItem()
-        if not currentWidget:
-            listWidget.setCurrentRow(0)
-            currentWidget = listWidget.currentItem()
-
-        currentText = currentWidget.data(Qt.UserRole) or currentWidget.text()
-        errorList = self.targetToErrorDataDict.get(currentText, {}).get("errorList", {})
-
+        # full path
+        nodeName= ListWidgetB.currentItem()
+        if nodeName:
+            nodeName = nodeName.data(Qt.UserRole)
+        else:
+            return
         treeWidget.clear()
+        errorData= self.errorData["nodes"].get(nodeName, {})
+        if not errorData:
+            print("Can't find error data for node:", nodeName)
+            return
 
-        # 모든 데이터를 추가
-        for checkName, detailResult in errorList.items():
+        allErrorCount = len(errorData)
+        headerItem= treeWidget.headerItem()
+        headerItem.setText(0, f"Error Count: {allErrorCount}")
+        headerItem.setFont(0, QFont("Arial", 11))
+        headerItem.setTextAlignment(0, Qt.AlignCenter)
+        for checkName, details in errorData.items():
+
             topLevelItem = QTreeWidgetItem()
-            full_path = checkName
-            short_path = self.PathToshortName(full_path)
-            topLevelItem.setText(0, short_path if self.is_short_path_tree else full_path)
-            topLevelItem.setData(0, Qt.UserRole, full_path)
-            topLevelItem.setData(0, Qt.UserRole + 1, short_path)
+            topLevelItem.setText(0, checkName)
             treeWidget.addTopLevelItem(topLevelItem)
 
-            # 세부 데이터 추가
-            if not isinstance(detailResult, list):
-                detailResult = [detailResult]
-            for detail in detailResult:
+
+            if not isinstance(details, list):
+                details = [details]
+
+            for detail in details:
                 childItem = QTreeWidgetItem()
-                full_detail = str(detail)
-                short_detail = self.PathToshortName(full_detail)
-                childItem.setText(0, short_detail if self.is_short_path_tree else full_detail)
-                childItem.setData(0, Qt.UserRole, full_detail)
-                childItem.setData(0, Qt.UserRole + 1, short_detail)
+                
+                detailPath = detail
+                shortPath= detailPath.split("|")[-1]
+                childItem.setData(0, Qt.UserRole, detailPath)
+                childItem.setData(0, Qt.UserRole + 1, shortPath)
+                childItem.setText(0, shortPath if self.is_short_path_tree else detailPath)
                 topLevelItem.addChild(childItem)
 
-            topLevelItem.setExpanded(True)  # 기본적으로 펼침
+            topLevelItem.setExpanded(True)
 
-        self.setTopLevelItemColors(treeWidget)  # 스타일 설정
+        self.setTopLevelItemColors(treeWidget)
 
 
+
+
+    def runEachErrorCheck(self, category, checkName, inputList):
+        """
+        Run the error check for a specific category and check name.
         
-    def errorCheckRun(self):
-        # run error check
-        rowID= self.ui.inputTable.currentRow()
-        if rowID == 0:
-            self.inputList = self.AllInputList
+        Args:
+            category (str): The category of the error check (e.g., "general").
+            checkName (str): The specific check name (e.g., "unfreeze").
+            inputList (list): The full input list to be processed.
+        
+        Returns:
+            tuple: (errorCount, errorNodes)
+        """
+        result = self.getCheckFunction(category, checkName)
+        if result == None:
+            print(f"Skipping check '{checkName}' in category '{category}' as it is not implemented.")
+            return 0, [], []
+        
+        func, inputRange = result
+
+        # Apply input range if specified
+        if isinstance(inputRange, slice):
+            filteredInput = inputList[inputRange]
+        elif isinstance(inputRange, int):
+            filteredInput = [inputList[inputRange]]
         else:
-            self.inputList = self.selInputList
+            filteredInput = inputList  # Default: use full list
+
+        # Run the check function with the filtered input
+        allErrorNodes = []
+        allDetail = []
+        allErrorCount = 0
+        for group in filteredInput:
+            result= func(group)
+            if len(result) == 2:
+                errorCount, errorNodes = result
+                details = []
+            else:
+                errorCount, errorNodes, details = result
+
+            if errorNodes==None:
+                errorNodes=[]
+
+            if errorCount:
+                if errorNodes[0] == "scene":
+                    
+                    if "scene" not in allErrorNodes:
+                        allDetail.append(details)
+                        allErrorNodes.extend(errorNodes)
+                        allErrorCount += errorCount
+
+                else:
+                    allErrorNodes.extend(errorNodes)
+                    allErrorCount += errorCount
+                  
+ 
+            if details:
+                for id in range(len(errorNodes)):
+                    allDetail.append(details[id])
         
-        self.resultDataInit()
-        self.allcheckboxOnOffUpdate()
-        self.updateCriteriaTable()
 
-        for category, checkList in self.isActiveDict.items():
-            for checkName in checkList:
-                self.errorCheckFuncMatch(category, checkName)
 
-        self.CriteriaToTargetTable()
-        self.updateErrorTargetList()
+        return allErrorCount, allErrorNodes, allDetail
+      
 
-        self.setTopLevelItemColors(self.treeWidget)
+    def getCheckFunction(self, category, checkName):
+        """
+        Returns the function and input range for a specific check.
         
-        #self.ui.setUIStyle(self.ui.uiStyle)
+        Args:
+            category (str): Category name (e.g., "general").
+            checkName (str): Check name (e.g., "unfreeze").
+        
+        Returns:
+            tuple: (function, inputRange)
+        """
+        funcMap = {
+            "general": {
+                "unfreeze": (general.unfreezeTransform, slice(None, -1)),  # Exclude last element
+                "pivot": (general.pivotAtWorldCenter, slice(None, -1)),  # Exclude last element
+                "history": (general.history, slice(None, -1)),  # Exclude last element
+                "animkey": (general.animKey, None),  # Use full list
+                "layer": (general.layer, None),  # Use full list
+                "hidden": (general.hidden, None),  # Use full list
+                "defaultMaterial": (general.onlyDefaultMaterial, None),  # Use full list
+                "defaultCamera": (general.onlyDefaultCamera, None),  # Use full list
+                "perspView": (general.perspView, None),  # Use full list
+                "unKnown": (general.unKnown, None),  # Use full list
+            },
+            "model": {
+                "ngon": (model.ngonFace, 0),  # Use first element only
+                
+            },
+            "naming": {
+                "duplicatedNames": (naming.duplicatedNames, None),  # Use full list
+                "nameSpace": (naming.nameSpace, None),  # Use full list
+                "shapeName": (naming.shapeName, None),  # Use full list
+            }
+           
+        }
+
+
+        if category in funcMap and checkName in funcMap[category]:
+            return funcMap[category][checkName]
+        else:
+            return None
+            
+
+    def sceneRelatedCheckboxCountUpdate(self):
+        self.updateSceneCheckCount()
+        self.updateInputTableUI()
 
     def eventFilter(self, source, event):
-        if source == self.listWidgetA.viewport():
-            if event.type() == event.MouseButtonPress and event.button() == Qt.MiddleButton:
+        if event.type() == event.MouseButtonPress and event.button() == Qt.MiddleButton:
+            if source == self.listWidgetA.viewport():
                 self.togglePathModeInList(self.listWidgetA, "listA")
-        elif source == self.listWidgetB.viewport():
-            if event.type() == event.MouseButtonPress and event.button() == Qt.MiddleButton:
+            elif source == self.listWidgetB.viewport():
                 self.togglePathModeInList(self.listWidgetB, "listB")
-        elif source == self.treeWidget.viewport():
-            if event.type() == event.MouseButtonPress and event.button() == Qt.MiddleButton:
+            elif source == self.treeWidget.viewport():
                 self.togglePathModeInTree()
         return super().eventFilter(source, event)
 
-    def togglePathModeInList(self, widget, widget_name):
-        """
-        ListWidget의 경로를 전체/짧은 경로로 전환.
-        """
-        if widget_name == "listA":
-            self.is_short_path_listA = not self.is_short_path_listA
-            is_short = self.is_short_path_listA
-        elif widget_name == "listB":
-            self.is_short_path_listB = not self.is_short_path_listB
-            is_short = self.is_short_path_listB
+    def togglePathModeInList(self, widget, widgetName):
+        isShort = getattr(self, f"is_short_path_{widgetName}")
+        setattr(self, f"is_short_path_{widgetName}", not isShort)
 
         for i in range(widget.count()):
             item = widget.item(i)
-            full_path = item.data(Qt.UserRole)  # 전체 경로
-            short_path = item.data(Qt.UserRole + 1)  # 짧은 경로
-
-            if full_path and short_path:  # 데이터가 설정되어 있는 경우
-                item.setText(short_path if is_short else full_path)
-            else:  # 데이터가 없는 경우 기본 설정
-                full_path = item.text()
-                short_path = self.PathToshortName(full_path)
-                item.setData(Qt.UserRole, full_path)
-                item.setData(Qt.UserRole + 1, short_path)
-                item.setText(short_path if is_short else full_path)
+            fullPath = item.data(Qt.UserRole)
+            shortPath = item.data(Qt.UserRole + 1)
+            item.setText(shortPath if not isShort else fullPath)
 
     def togglePathModeInTree(self):
         """
-        TreeWidget의 경로를 전체/짧은 경로로 전환.
+        Toggles the display mode (fullPath/shortPath) for childLevel items in the treeWidget.
         """
         self.is_short_path_tree = not self.is_short_path_tree
-        root = self.treeWidget.invisibleRootItem()
-        self.updateTreeItemsToPath(root, self.is_short_path_tree)
+        treeWidget = self.treeWidget
+        root = treeWidget.invisibleRootItem()
 
+        # Iterate over topLevel items
+        for i in range(root.childCount()):
+            topLevelItem = root.child(i)
+            self.updateTreeItemsToPath(topLevelItem, self.is_short_path_tree)
 
-    def updateTreeItemsToPath(self, item, to_short):
+    def updateTreeItemsToPath(self, topLevelItem, toShort):
         """
-        TreeWidget 아이템의 경로를 전체/짧은 경로로 전환.
+        Updates the display mode (fullPath/shortPath) for childLevel items of the given topLevel item.
+        Args:
+            topLevelItem (QTreeWidgetItem): The topLevel item whose children will be updated.
+            toShort (bool): Whether to display shortPath (True) or fullPath (False).
         """
-        for i in range(item.childCount()):
-            child = item.child(i)
-            full_path = child.data(0, Qt.UserRole)  # 전체 경로
-            short_path = child.data(0, Qt.UserRole + 1)  # 짧은 경로
+        # Iterate over childLevel items (1st-level children of topLevelItem)
+        for j in range(topLevelItem.childCount()):
+            childItem = topLevelItem.child(j)
+            fullPath = childItem.data(0, Qt.UserRole)  # Full path
+            shortPath = childItem.data(0, Qt.UserRole + 1)  # Short path
 
-            if full_path and short_path:  # 데이터가 설정되어 있는 경우
-                child.setText(0, short_path if to_short else full_path)
-            else:  # 데이터가 없는 경우 기본 설정
-                full_path = child.text(0)
-                short_path = self.PathToshortName(full_path)
-                child.setData(0, Qt.UserRole, full_path)
-                child.setData(0, Qt.UserRole + 1, short_path)
-                child.setText(0, short_path if to_short else full_path)
-
-            # 재귀 호출로 자식 노드 처리
-            self.updateTreeItemsToPath(child, to_short)
+            if fullPath and shortPath:
+                # Update text to shortPath or fullPath based on the toggle state
+                childItem.setText(0, shortPath if toShort else fullPath)
+            else:
+                # If paths are not set, fallback to existing text
+                fullPath = childItem.text(0)
+                shortPath = self.PathToshortName(fullPath)
+                childItem.setData(0, Qt.UserRole, fullPath)
+                childItem.setData(0, Qt.UserRole + 1, shortPath)
+                childItem.setText(0, shortPath if toShort else fullPath)
 
     def PathToshortName(self, nodeName):
-        """
-        전체 경로에서 짧은 이름을 추출.
-        """
-        if "|" in nodeName:
-            return nodeName.rsplit("|", 1)[-1]
-        return nodeName
+        return nodeName.rsplit("|", 1)[-1] if "|" in nodeName else nodeName
 
-    
     def setTopLevelItemColors(self, treeWidget):
-        """
-        QTreeWidget의 topLevel 항목에만 번갈아 색상을 적용.
-        """
         root = treeWidget.invisibleRootItem()
-        for top_index in range(root.childCount()):
-            top_item = root.child(top_index)
-
-            # 색상 설정 (홀수, 짝수 구분)
-            if top_index % 2 == 0:
-                color = QColor(70, 70, 70)  # 회색
-            else:
-                color = QColor(80, 80, 80)  # 좀 더 밝은 회색 
-
+        for i in range(root.childCount()):
+            topItem = root.child(i)
+            color = QColor(70, 70, 70) if i % 2 == 0 else QColor(80, 80, 80)
             for col in range(treeWidget.columnCount()):
-                top_item.setBackground(col, color)
+                topItem.setBackground(col, color)
 
 def run():
-    
-    if cmds.window("AssetCheck_win", exists = True):
-        
+    if cmds.window("AssetCheck_win", exists=True):
         cmds.deleteUI("AssetCheck_win")
-
 
     ToolWin = mainWin()
     ToolWin.show()
-
-
 
 if __name__ == "__main__":
     run()

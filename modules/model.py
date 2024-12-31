@@ -66,3 +66,11 @@ def objectPivot():
     
     # modelList=cmds.ls(type='mesh')
     pass
+
+def selfIntersect():
+    # check if there is self-intersecting geometry
+    pass
+
+def objectIntersect():
+    # check if there is intersecting geometry
+    pass

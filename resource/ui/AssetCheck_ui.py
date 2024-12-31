@@ -4,23 +4,24 @@ from PySide2.QtWidgets import *
 from functools import partial
 
 
-
 class AssetCheckWidgetUI(QWidget):
     def __init__(self, jsonData, uiStylePath):
         super(AssetCheckWidgetUI, self).__init__()
         self.setObjectName("AssetCheckWidgetUI")
-        self.errorData = jsonData["errorData"]  # Accessing the root "errorData"
-        self.sceneCheckCount = 0
+        self.errorData = jsonData["errors"]  # Using the full "errorData" object
         
         self.initUI()
         self.createModelCleanUpCheckboxes()
         self.functionConnect()
+
+        self.sceneRelatedColor = QColor(255, 200, 125, 255)
         self.sceneRelatedCheckBoxList = self.getSceneRelatedCheckBoxList()
-        
-        
+        self.ColoringCheckboxes(self.sceneRelatedCheckBoxList, self.sceneRelatedColor)
+        # coloring inputTable header(4) : self.sceneRelatedColor
+        self.inputTable.horizontalHeaderItem(4).setForeground(QBrush(self.sceneRelatedColor))
+
         with open(uiStylePath, "r") as f:
             self.setStyleSheet(f.read())
-        
 
     def initUI(self):
         """Initialize the main UI layout."""
@@ -40,10 +41,6 @@ class AssetCheckWidgetUI(QWidget):
 
         # Input Button
         self.inputButton = QPushButton("검사 대상 선택 후 클릭")
-        # text size 12 point and bold font
-        # dark orange background color
-        
-
         self.inputButton.setObjectName("inputButton")
         self.inputButton.setFixedHeight(30)
 
@@ -67,16 +64,13 @@ class AssetCheckWidgetUI(QWidget):
         self.leftLayout.addWidget(self.optionGroup)
         self.leftLayout.addWidget(self.optionTab)
 
-        # set Stretch Factor
-        self.leftLayout.setStretchFactor(self.inputButton, 2)
-        self.leftLayout.setStretchFactor(self.inputTable, 2)
-        self.leftLayout.setStretchFactor(self.optionGroup, 1)
-        self.leftLayout.setStretchFactor(self.optionTab, 7)
+        self.leftLayout.setStretch(0, 1)
+        self.leftLayout.setStretch(1, 2)
+        self.leftLayout.setStretch(2, 1)
+        self.leftLayout.setStretch(3, 7)
 
         self.leftWidget.setLayout(self.leftLayout)
         return self.leftWidget
-
-
 
     def createInputTable(self):
         """Create and configure the input table."""
@@ -96,36 +90,32 @@ class AssetCheckWidgetUI(QWidget):
         layout = QHBoxLayout()
 
         self.CategoryCheckboxDict = {}
-        self.allCheckboxesDict = {}
-        categoryDict = self.errorData["category"]
-        
-        # create checkboxList sized by the number of categories
-        for categoryDataDict in self.errorData["category"].values():
-            checkBox = QCheckBox(categoryDataDict["uiText"])
+        categoryDict = self.errorData
+
+        for categoryName, categoryData in categoryDict.items():
+            checkBox = QCheckBox(categoryData["uiText"])
             checkBox.setChecked(True)
             layout.addWidget(checkBox)
-            self.CategoryCheckboxDict[categoryDataDict["id"]] = checkBox
+            self.CategoryCheckboxDict[categoryData["id"]] = checkBox
 
         group.setLayout(layout)
         return group
 
     def toggleCategory(self, state, category_id):
         """Toggle all checkboxes in the related tab when the category checkbox is toggled."""
-        
         tab = self.optionTab.widget(category_id)
         self.optionTab.setCurrentWidget(tab)
         checkboxes = tab.findChildren(QCheckBox)
         for checkbox in checkboxes:
             checkbox.setChecked(state == Qt.Checked)
 
-
     def createOptionTabs(self):
         """Create the tab widget for detailed options."""
         tabWidget = QTabWidget()
         tabWidget.setObjectName("optionTab")
-
-        for categoryName, category_data in self.errorData["category"].items():
-            tabWidget.addTab(self.createCategoryTab(categoryName, category_data), category_data["uiText"])
+        self.allCheckboxesDict = {}
+        for categoryName, categoryData in self.errorData.items():
+            tabWidget.addTab(self.createCategoryTab(categoryName, categoryData), categoryData["uiText"])
 
         return tabWidget
 
@@ -135,82 +125,64 @@ class AssetCheckWidgetUI(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         layout = QVBoxLayout()
-        
-        self.allCheckboxesDict[categoryName]= {}
-        for checkName, check_data in category_data.get("checkList", {}).items():
-            
-            checkbox = QCheckBox(check_data.get("checkBoxText", checkName))
-            checkbox.setChecked(check_data.get("isActive", True))
 
-            self.allCheckboxesDict[categoryName][checkName] = checkbox
+        
+        for checkName, checkData in category_data.get("checkList", {}).items():
+            checkbox = QCheckBox(checkData.get("checkBoxText", checkName))
+            checkbox.setChecked(checkData.get("isActive", True))
+
+            if categoryName not in self.allCheckboxesDict:
+                self.allCheckboxesDict[categoryName] = {}
+                self.allCheckboxesDict[categoryName][checkName] = checkbox
+            else:
+                self.allCheckboxesDict[categoryName][checkName] = checkbox
+
             layout.addWidget(checkbox)
 
         tab.setLayout(layout)
         scroll.setWidget(tab)
         return scroll
-    
-    def createModelCleanUpCheckboxes(self):
-        
-        """Add a divider and two checkboxes to the model tab."""
-        # Find the model tab
 
-        modelTab = self.optionTab.widget(self.errorData["category"]["model"]["id"])
-        layout = modelTab.widget().layout()  # Access the layout of the inner widget
-        # Create a divider line
+    def createModelCleanUpCheckboxes(self):
+        """Add a divider and two checkboxes to the model tab."""
+        modelTab = self.optionTab.widget(self.errorData["model"]["id"])
+        layout = modelTab.widget().layout()
+
         divider = QFrame()
         divider.setFrameShape(QFrame.HLine)
         divider.setFrameShadow(QFrame.Sunken)
 
-        # Create custom checkboxes
         vertexFreezeCheckbox = QCheckBox("Vertex 값 초기화")
         vertexFreezeCheckbox.setChecked(True)
-
 
         conformNormalCheckbox = QCheckBox("전체 Conform Normal 적용")
         conformNormalCheckbox.setChecked(True)
 
-
-        # Add widgets to the layout
         layout.addWidget(divider)
         layout.addWidget(vertexFreezeCheckbox)
         layout.addWidget(conformNormalCheckbox)
-      
 
     def initRightPanel(self):
         """Initialize the right panel for results."""
         self.rightWidget = QWidget()
         self.rightLayout = QVBoxLayout()
 
-        # Run Button
         self.runButton = QPushButton("검사 시작")
         self.runButton.setFixedHeight(30)
         self.runButton.setObjectName("runButton")
 
-        # Error Result Tabs
         self.errorResultTab = QTabWidget()
         self.errorResultTab.setObjectName("errorResultTab")
-
-        # Tab1: By Criteria
         self.errorResultTab.addTab(self.createErrorByCriteriaTab(), "기준별 Error 대상")
-
-        # Tab2: By Element
         self.errorResultTab.addTab(self.createErrorByTargetTab(), "대상별 Error 기준")
 
-        """ # All Result Text
-        self.allResult = QPlainTextEdit()
-        self.allResult.setObjectName("allResult")
-        self.allResult.setReadOnly(True) """
-
-        # Right Layout
         self.rightLayout.addWidget(self.runButton)
         self.rightLayout.addWidget(self.errorResultTab)
-        #self.rightLayout.addWidget(self.allResult)
         self.rightWidget.setLayout(self.rightLayout)
 
         return self.rightWidget
 
     def createErrorByCriteriaTab(self):
-        """Create the error-by-criteria tab."""
         widget = QWidget()
         layout = QHBoxLayout()
 
@@ -227,11 +199,11 @@ class AssetCheckWidgetUI(QWidget):
 
         layout.addWidget(table)
         layout.addWidget(listWidget)
+        layout.setStretch(1,2)
         widget.setLayout(layout)
         return widget
 
     def createErrorByTargetTab(self):
-        """Create the error-by-element tab."""
         widget = QWidget()
         layout = QHBoxLayout()
 
@@ -253,32 +225,32 @@ class AssetCheckWidgetUI(QWidget):
         criteriaTree.setHeaderLabels(["Error Count"])
         criteriaTree.setColumnCount(1)
 
-
         layout.addLayout(leftLayout)
         layout.addWidget(criteriaTree)
         widget.setLayout(layout)
         return widget
 
     def getSceneRelatedCheckBoxList(self):
-        allCategory = self.errorData.get("category", {})
         sceneRelatedCheckBoxList = []
-        for categoryName, categoryDict in allCategory.items():
-            
-            checkListDict = categoryDict.get("checkList", {})
-            for checkName, checkListDict in checkListDict.items():
-                if checkListDict.get("isSceneRelated", False):
-                    
+        for categoryName, categoryData in self.errorData.items():
+            for checkName, checkData in categoryData.get("checkList", {}).items():
+                if checkData.get("isSceneRelated", False):
                     checkboxWidget = self.allCheckboxesDict[categoryName][checkName]
                     sceneRelatedCheckBoxList.append(checkboxWidget)
         return sceneRelatedCheckBoxList
-        
-      
+    
+    def ColoringCheckboxes(self, checkboxList, color):
+
+        for checkbox in checkboxList:
+            # only text color not indicator color
+            checkbox.setStyleSheet("color: rgb({},{},{})".format(color.red(), color.green(), color.blue()))
+
     def findWidget(self, parentWidget, widgetName):
         for widget in parentWidget.findChildren(QWidget):
             if widget.objectName() == widgetName:
                 return widget
-        return None 
-    
+        return None
+
     def functionConnect(self):
         for id, checkbox in self.CategoryCheckboxDict.items():
             checkbox.stateChanged.connect(partial(self.toggleCategory, category_id=id))

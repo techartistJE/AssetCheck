@@ -2,7 +2,7 @@
 import maya.cmds as cmds
 
 
-def topGroup():
+def topGroup(_inputList):
     # get top node List
     AlltopNodeList= cmds.ls(assemblies=True)
  
@@ -87,7 +87,7 @@ def history(nodeList):
             historyList =[]
     return(errorCount, errorNodeList, AllHistoryList)
 
-def perspView():
+def perspView(_inputList):
     # Viewport panel Check
     # if modelPanel4 is set to perspective view
     # 뷰포트 패널 이름 가져오기
@@ -142,7 +142,7 @@ def animKey(nodeList):
 
     return(errorCount, errorNodeList)
 
-def layer():
+def layer( _inputList ):
     # check if there are layers in the scene
     layers = cmds.ls(type="displayLayer")
     
@@ -151,7 +151,7 @@ def layer():
     
     if layers:
         
-        return (1, ["scene"], [layers])
+        return (1, ["scene"], layers)
     else:
    
         return (0, None)
@@ -168,19 +168,19 @@ def hidden(nodeList):
             errorNodeList.append(node)
     return (errorCount, errorNodeList)
       
-def onlyDefaultMaterial():
+def onlyDefaultMaterial(_inputList):
     allMaterials = cmds.ls(materials=True)
     defaultMaterials = ["lambert1", "standardSurface1", "particleCloud1"]
     allMaterials = [material for material in allMaterials if material not in defaultMaterials]
    
     if allMaterials:
         
-        return (1, ["scene"], [allMaterials])
+        return (1, ["scene"], allMaterials)
     else:
  
         return (0, None)
 
-def onlyDefaultCamera():
+def onlyDefaultCamera(_inputList):
     # input all camera in the scene
     dafaultCamera = ["persp", "top", "front", "side"]
     allCameraShape = cmds.ls(type="camera")
@@ -188,12 +188,12 @@ def onlyDefaultCamera():
     allCamera = [camera for camera in allCamera if camera not in dafaultCamera]
     if allCamera:
      
-        return (1, ["scene"], [allCamera])
+        return (1, ["scene"], allCamera)
     else:
         
         return (0, None)
     
-def unKnown():
+def unKnown(_inputList):
     # check if there are unknown nodes or plugin in the scene
     unknownPlugin = cmds.unknownPlugin(q=True, list=True)
     if not unknownPlugin:
@@ -208,7 +208,7 @@ def unKnown():
     detailUnkownList.extend(unknownNodes)
     if unknownPlugin or unknownNodes:
         
-        return (1, ["scene"], [detailUnkownList] )
+        return (1, ["scene"], detailUnkownList)
     else:
         
         return (0, ())
