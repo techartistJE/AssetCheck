@@ -35,6 +35,9 @@ QPushButton[objectName*="Help"]:hover {
     background-color: #696969;
     border: 1px solid #c7c7c7;
 }
+#resetTextButton:hover {
+    background-color: #7f7f7f;
+}
 
 QCheckBox {
     font-size: 11pt;

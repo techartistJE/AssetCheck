@@ -244,10 +244,10 @@ class mainWin(QMainWindow):
                 if checkData["isActive"]:
                     errorCount, nodes, detail = self.runEachErrorCheck(categoryName, checkName, inputList)
                     errorCount = len(nodes)
-                    print(checkName )
+                  
                     if checkName in manualCheckUIDict:
                         isCheckedText= manualCheckUIDict[checkName].text()
-                        print(isCheckedText)
+                        
                         if "안함" not in isCheckedText:
                             errorCount= 0
                             nodes= []
@@ -515,9 +515,11 @@ class mainWin(QMainWindow):
             tuple: (errorCount, errorNodes)
         """
         result = self.getCheckFunction(category, checkName)
+    
         if result == None:
             print(f"Skipping check '{checkName}' in category '{category}' as it is not implemented.")
             return 0, [], []
+    
         
         func, inputRange = result
 

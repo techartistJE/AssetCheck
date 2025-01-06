@@ -49,6 +49,8 @@ def lockedVertex(nodeList):
     # check if there are locked normal vertex
     errorCount=0
     errorNodeList=[]
+    if not nodeList:
+        return (errorCount, errorNodeList)
   
     # 메시 이름을 가져오기
     for OMnode in nodeList:
@@ -76,13 +78,13 @@ def lockedVertex(nodeList):
 
 def vertexInit(nodeList):
     # 입력된 nodeList가 비어 있는지 확인
-    if not nodeList:
-        print("nodeList가 비어 있습니다.")
-        return
     
     errorCount=0
     errorNodeList=[]
     AllMovedVertexList=[]
+
+    if not nodeList:
+        return (errorCount, errorNodeList)
 
     # 각 메시에 대해 처리
     for OMnode in nodeList:
@@ -132,6 +134,7 @@ def vertexInit(nodeList):
       
         except Exception as e:
             print(f"{nodeName} 처리 중 오류가 발생했습니다: {e}")
+
     return (errorCount, errorNodeList)
 
 def revNormal(nodeList):
