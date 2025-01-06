@@ -10,6 +10,8 @@ import sys
 import os
 import json
 
+import re
+
 try:
     RootDir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     pkgPath = os.path.dirname(os.path.abspath(__file__))
@@ -23,12 +25,12 @@ import AssetCheck.resource.ui.AssetCheck_ui as AssetCheck_ui
 import AssetCheck.modules.general as general
 import AssetCheck.modules.model as model
 import AssetCheck.modules.naming as naming
-import AssetCheck.modules.uv as uv
+
 
 import AssetCheck.modules.simple_om_object as simple_om_object
 
 import importlib
-for module in [AssetCheck_ui, general, model, naming, uv, simple_om_object]:
+for module in [AssetCheck_ui, general, model, naming, simple_om_object]:
     importlib.reload(module)
 
 def getMayaWindow():
@@ -49,10 +51,13 @@ class mainWin(QMainWindow):
         self.AllInputList = []
         
         self.errorData = loadJsonData(errorDataPath)["errorData"]
+        
 
         self.sceneCheckCount = 0
         self.ui = AssetCheck_ui.AssetCheckWidgetUI(self.errorData, uiStylePath)
 
+        self.initManualErrorData()
+        self.errorMessages = self.getErrorMsgs()
         self.sceneRelatedCheckBoxList = self.ui.sceneRelatedCheckBoxList
 
         self.setCentralWidget(self.ui)
@@ -66,6 +71,8 @@ class mainWin(QMainWindow):
         self.is_short_path_listB = True
         self.is_short_path_tree = True
 
+        self.criteriaTable = self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
+        self.criteriaTable.viewport().installEventFilter(self)
         self.listWidgetA = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListA")
         self.listWidgetA.viewport().installEventFilter(self)
         self.listWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
@@ -76,9 +83,63 @@ class mainWin(QMainWindow):
     def uiFuncConnect(self):
         self.ui.inputButton.clicked.connect(self.updateInputTable)
         self.ui.runButton.clicked.connect(self.errorCheckRun)
+        self.ui.nameFilter.textChanged.connect(lambda: self.filterItemsInList(self.listWidgetB, self.ui.nameFilter.text()))
 
         for checkbox in self.sceneRelatedCheckBoxList:
             checkbox.stateChanged.connect(self.updateSceneCheckCount)
+
+        self.ui.NormalModebutton.clicked.connect(self.backfaceCullingOnOff)
+        self.ui.NormalCheckedButton.clicked.connect(lambda: self.selfCheckedToggle(self.ui.NormalCheckedButton))
+        self.ui.InterSectionCheckedButton.clicked.connect(lambda: self.selfCheckedToggle(self.ui.InterSectionCheckedButton))
+        self.ui.ObjectInterSectionCheckedButton.clicked.connect(lambda: self.selfCheckedToggle(self.ui.ObjectInterSectionCheckedButton))
+
+    # ---------Init Manual Error Data Structure 추가 -------------
+    def initManualErrorData(self):
+    # errorData.json 파일에 내용이 ui 자동 생성용으로 쓰여서
+    # 아래 수동 검사 구조는 ui 생성 후에 추가해야 함
+    
+        modelManualCheckDict = {
+            "revNormal": {
+                "id": 3,
+                "checkBoxText": "뒤집힌 면 확인",
+                "errorMessage": "뒤집힌 면이 있는지 확인해주세요.",
+                "isActive": True,
+                "isSceneRelated": False,
+                "nodes": []
+            },
+            "selfIntersect": {
+                "id": 4,
+                "checkBoxText": "자기 자신과 겹침이 있는지 확인",
+                "errorMessage": "자기 자신과 겹침이 있는지 확인해주세요.",
+                "isActive": True,
+                "isSceneRelated": False,
+                "nodes": []
+            },
+            "objectIntersect": {
+                "id": 5,
+                "checkBoxText": "다른 오브젝트와 겹침이 있는지 확인",
+                "errorMessage": "다른 오브젝트와 겹침이 있는지 확인해주세요.",
+                "isActive": True,
+                "isSceneRelated": False,
+                "nodes": []
+            }
+        }
+
+        # model 카테고리의 checkList에 병합
+        if "model" in self.errorData["errors"]:
+            self.errorData["errors"]["model"]["checkList"].update(modelManualCheckDict)
+        else:
+            # model 카테고리가 없으면 새로 추가
+            self.errorData["errors"]["model"] = {
+                "id": 1,
+                "uiText": "모델링",
+                "checkList": modelManualCheckDict
+            }
+
+        
+
+
+
     # ---------------------------- Input Table ----------------------------
     def updateInputTable(self):
         isSelected= self.inputNode()
@@ -89,6 +150,7 @@ class mainWin(QMainWindow):
             self.ui.inputTable.selectRow(0)
         self.updateSceneCheckCount()
         self.updateInputTableUI()
+        self.resetManualCheckUI()
 
     def updateSceneCheckCount(self):
        
@@ -166,20 +228,35 @@ class mainWin(QMainWindow):
     
         # Steop 0: errorData 초기화
         self.errorData = loadJsonData(errorDataPath)["errorData"]
+        self.initManualErrorData()
+        # Result UI 초기화
+        self.resultUIInit()
 
         # Step 1: Update isActive status based on checkbox state
         for category, categoryData in self.errorData["errors"].items():
             for checkName, checkData in categoryData["checkList"].items():
                 self.errorData["errors"][category]["checkList"][checkName]["isActive"] = self.ui.allCheckboxesDict[category][checkName].isChecked()
 
+        manualCheckUIDict= {"revNormal": self.ui.NormalCheckedButton, "selfIntersect": self.ui.InterSectionCheckedButton, "objectIntersect": self.ui.ObjectInterSectionCheckedButton}
         # Step 2: Run error checks
         for categoryName, categoryData in self.errorData["errors"].items():
             for checkName, checkData in categoryData["checkList"].items():
                 if checkData["isActive"]:
                     errorCount, nodes, detail = self.runEachErrorCheck(categoryName, checkName, inputList)
+                    errorCount = len(nodes)
+                    print(checkName )
+                    if checkName in manualCheckUIDict:
+                        isCheckedText= manualCheckUIDict[checkName].text()
+                        print(isCheckedText)
+                        if "안함" not in isCheckedText:
+                            errorCount= 0
+                            nodes= []
+                            detail= []
+            
+                    
                     checkData["nodes"] = nodes
-                    checkData["errorCount"] = len(nodes)
-
+                    checkData["errorCount"] = errorCount
+                    
                     for id, node in enumerate(nodes):
                         if isinstance(node, str):
                             nodeName = node
@@ -256,8 +333,7 @@ class mainWin(QMainWindow):
         """
       
         # Step 1: Update errorByCriteriaTable
-        criteriaTable = self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
-        criteriaTable.clearContents()
+        criteriaTable = self.criteriaTable
         resultTableData = []
 
         for category, checkList in self.errorData["errors"].items():
@@ -275,13 +351,13 @@ class mainWin(QMainWindow):
 
             # Set category and checkName
             criteriaHeaderItem = QTableWidgetItem(checkName)
-            criteriaHeaderItem.setFont(QFont("Arial", 12))
+            criteriaHeaderItem.setFont(QFont("Arial", 11))
             criteriaHeaderItem.setTextAlignment(Qt.AlignCenter)
             criteriaTable.setVerticalHeaderItem(i, criteriaHeaderItem)
 
             # Set error count
             countItem = QTableWidgetItem(str(errorCount))
-            countItem.setFont(QFont("Arial", 12))
+            countItem.setFont(QFont("Arial", 11))
             countItem.setTextAlignment(Qt.AlignCenter)
             criteriaTable.setItem(i, 0, countItem)
 
@@ -291,24 +367,28 @@ class mainWin(QMainWindow):
             criteriaHeaderItem.setData(Qt.UserRole, category)
         
         criteriaTable.setHorizontalHeaderLabels(["Error Count : " + str(allErrorCount)])
-        # font size 12 center align
-        criteriaTable.horizontalHeaderItem(0).setFont(QFont("Arial", 12))
+        # font size 11 center align
+        criteriaTable.horizontalHeaderItem(0).setFont(QFont("Arial", 11))
         criteriaTable.horizontalHeaderItem(0).setTextAlignment(Qt.AlignCenter)
         criteriaTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        criteriaTable.horizontalHeader().setStretchLastSection(True)
+        
+  
         # Resize row and column
        
         criteriaTable.resizeColumnsToContents()
         criteriaTable.resizeRowsToContents()
+        criteriaTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
 
         # Connect selection change to update listWidgetA
-        criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
-
+        #criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
+       
         # Step 2: Update errorTargetListA
         criteriaTable.setCurrentCell(0, 0)
 
         # Step 3: Update errorTargetListB
         self.updateErrorTargetListB()
+
 
  
     def populateErrorList(self, listWidget, errorNodeList, isShortPath):
@@ -333,8 +413,8 @@ class mainWin(QMainWindow):
         """
         Updates errorTargetListA based on the selected criteria in the errorByCriteriaTable.
         """
-        tableWidget = self.ui.findWidget(self.ui.errorResultTab, "errorByCriteriaTable")
-        listWidgetA = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListA")
+        tableWidget = self.criteriaTable
+        listWidgetA = self.listWidgetA
 
         currentItem = tableWidget.currentItem()
         if not currentItem:
@@ -356,7 +436,7 @@ class mainWin(QMainWindow):
         """
         Updates errorTargetListB with all nodes that have errors.
         """
-        listWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
+        listWidgetB = self.listWidgetB
         errorNodes = list(self.errorData["nodes"].keys())
 
         listWidgetB.clear()
@@ -371,8 +451,8 @@ class mainWin(QMainWindow):
         """
         Updates errorCriteriaTree based on the selected criteria.
         """
-        ListWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
-        treeWidget = self.ui.findWidget(self.ui.errorResultTab, "errorCriteriaTree")
+        ListWidgetB = self.listWidgetB
+        treeWidget = self.treeWidget
      
 
         # full path
@@ -393,9 +473,11 @@ class mainWin(QMainWindow):
         headerItem.setFont(0, QFont("Arial", 11))
         headerItem.setTextAlignment(0, Qt.AlignCenter)
         for checkName, details in errorData.items():
-
+            errorMessage = self.errorMessages[checkName]
             topLevelItem = QTreeWidgetItem()
-            topLevelItem.setText(0, checkName)
+            topLevelItem.setData(0, Qt.UserRole, checkName)
+            topLevelItem.setData(0, Qt.UserRole + 1, errorMessage)
+            topLevelItem.setText(0, errorMessage)
             topLevelItem.setTextAlignment(0, Qt.AlignCenter)
             treeWidget.addTopLevelItem(topLevelItem)
 
@@ -510,36 +592,59 @@ class mainWin(QMainWindow):
             },
             "model": {
                 "ngon": (model.ngonFace, 0),  # Use first element only
-                
+                "lockedVertex": (model.lockedVertex, 0),  # Use first element only
+                "vertexInit": (model.vertexInit, 0),  # Use first element only
+                "revNormal": (model.revNormal, 0),  # Use first element only
+                "selfIntersect": (model.selfIntersect, 0),  # Use first element only
+                "objectIntersect": (model.objectIntersect, 0),  # Use first element only
             },
             "naming": {
                 "duplicatedNames": (naming.duplicatedNames, None),  # Use full list
                 "nameSpace": (naming.nameSpace, None),  # Use full list
                 "shapeName": (naming.shapeName, None),  # Use full list
+
             }
            
         }
-
 
         if category in funcMap and checkName in funcMap[category]:
             return funcMap[category][checkName]
         else:
             return None
             
+    def resetManualCheckUI(self):
+        manualCheckUIDict= {"revNormal": self.ui.NormalCheckedButton, "selfIntersect": self.ui.InterSectionCheckedButton, "objectIntersect": self.ui.ObjectInterSectionCheckedButton}
+        for checkName, buttonWidget in manualCheckUIDict.items():
+            buttonWidget.setText("확인 안함")
+            buttonWidget.setStyleSheet("background-color: #7e2c1e;")
 
     def sceneRelatedCheckboxCountUpdate(self):
         self.updateSceneCheckCount()
         self.updateInputTableUI()
 
     def eventFilter(self, source, event):
-        if event.type() == event.MouseButtonPress and event.button() == Qt.MiddleButton:
-            if source == self.listWidgetA.viewport():
-                self.togglePathModeInList(self.listWidgetA, "listA")
-            elif source == self.listWidgetB.viewport():
-                self.togglePathModeInList(self.listWidgetB, "listB")
-            elif source == self.treeWidget.viewport():
-                self.togglePathModeInTree()
+        if event.type() == QEvent.MouseButtonPress:
+            if event.button() == Qt.MiddleButton:
+                # 중간 버튼 클릭 처리
+                if source == self.listWidgetA.viewport():
+                    self.togglePathModeInList(self.listWidgetA, "listA")
+                elif source == self.listWidgetB.viewport():
+                    self.togglePathModeInList(self.listWidgetB, "listB")
+                elif source == self.treeWidget.viewport():
+                    self.togglePathModeInTree()
+            elif event.button() == Qt.LeftButton:
+                # 왼쪽 버튼 클릭 처리
+                if source == self.criteriaTable.viewport():
+                    self.showErrorTargetByCriteria()
+        
+        elif event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.LeftButton:
+                # 왼쪽 버튼 클릭 해제 처리
+                if source == self.criteriaTable.viewport():
+                    self.showErrorTargetByCriteria()
+
         return super().eventFilter(source, event)
+
 
     def togglePathModeInList(self, widget, widgetName):
         isShort = getattr(self, f"is_short_path_{widgetName}")
@@ -599,7 +704,86 @@ class mainWin(QMainWindow):
             for col in range(topItem.columnCount()):
                 topItem.setBackground(col, color)
       
-            
+    def resultUIInit(self):
+        allResultUI = [self.criteriaTable, self.listWidgetA, self.listWidgetB, self.treeWidget]  
+        for ui in allResultUI:
+            ui.clear()
+
+        self.criteriaTable.setRowCount(0)
+        self.treeWidget.headerItem().setText(0, "Error Count: 0")
+
+    def getErrorMsgs(self):
+        MessageDict= {}
+        errorCategory = self.errorData["errors"]
+        for category, checkList in errorCategory.items():
+            for checkName, checkData in checkList["checkList"].items():
+                errorMessages = checkData.get("errorMessage", [])
+                MessageDict[checkName] = errorMessages
+    
+        return MessageDict
+
+    def backfaceCullingOnOff(self):
+        currentText= self.ui.NormalModebutton.text()
+        OnOff= False
+        if "On" in currentText:
+            self.ui.NormalModebutton.setText("BackFace Culling Off")
+            self.ui.NormalModebutton.setStyleSheet("background-color: #3f3f3d;")
+            OnOff = False
+        elif "Off" in currentText:
+            self.ui.NormalModebutton.setText("BackFace Culling On")
+            self.ui.NormalModebutton.setStyleSheet("background-color: #7c7c7c;")
+            OnOff = True 
+        panels = cmds.getPanel(typ= 'modelPanel')
+        for panel in panels:
+            cmds.modelEditor(panel, edit=True, backfaceCulling= OnOff)
+
+    def selfCheckedToggle(self, buttonWidget):
+        currentText= buttonWidget.text()
+        if "안함" in currentText:
+            buttonWidget.setText("확인함")
+            # 녹색으로 변경
+            buttonWidget.setStyleSheet("background-color: green;")
+        else:
+            buttonWidget.setText("확인 안함")
+            # 빨간색으로 변경
+            buttonWidget.setStyleSheet("background-color: #7e2c1e;")
+
+    def filterItemsInList(self, listWidget, filterText):
+        if not filterText:  # filterText가 빈 문자열이거나 None일 경우
+            for i in range(listWidget.count()):
+                listWidget.item(i).setHidden(False)
+            return
+        # 공백은 서로 다른 글자
+        # 앞에 -가 붙은 건 한 번 filtered 된 것 중 제외
+        # 기본으로 쓴 text 앞 뒤로 *를 붙여줌
+        # '*'를 정규표현식의 '.*'로 변환
+        allFilterText = filterText.split()
+        regexPatternTextList= []
+        exculdeTextList= []
+        for text in allFilterText:
+            if text[0] == "-":
+                exculdeTextList.append( text[1:] )
+                continue
+            withWildcardText = "*" + text + "*"
+            regexPatternTextList.append(re.escape(withWildcardText).replace(r'\*', '.*'))
+
+        for text in regexPatternTextList:
+            regexPatternText = text
+            regex = re.compile(f"^{regexPatternText}$", re.IGNORECASE)
+            for i in range(listWidget.count()):
+                item = listWidget.item(i)
+                itemText = item.text()
+                if regex.match(itemText):  # 정규표현식으로 매칭
+                    item.setHidden(False)
+                else:
+                    item.setHidden(True)
+                for exculdeText in exculdeTextList:
+                    if exculdeText in itemText:
+                        item.setHidden(True)
+                        break
+
+    
+
 
 def run():
     if cmds.window("AssetCheck_win", exists=True):

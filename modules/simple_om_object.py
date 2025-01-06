@@ -9,7 +9,7 @@ class SimpleOMObject(object):
     def __init__(self, nodeName):
         self.selectedNodeName= nodeName
         self.transformName = None
-        self.ShapeName = None
+        self.shapeName = None
         self.coreNodeName = nodeName
         self.ConnectedDeformerAsDeformed = []
         self.ConnectedDeformerAsDeformer = []
@@ -43,11 +43,11 @@ class SimpleOMObject(object):
             if currentNodeType == 'transform':
                 if cmds.listRelatives(nodeName, shapes=True, fullPath=True):
                     self.transformName = nodeName
-                    self.ShapeName = cmds.listRelatives(nodeName, fullPath=1,shapes=True)[0]
+                    self.shapeName = cmds.listRelatives(nodeName, fullPath=1,shapes=True)[0]
                     
-                    self.objectType= cmds.nodeType(self.ShapeName)
+                    self.objectType= cmds.nodeType(self.shapeName)
 
-                    self.coreNodeName= self.ShapeName
+                    self.coreNodeName= self.shapeName
                 else:               
                     self.transformName = nodeName
                     self.objectType= cmds.nodeType(nodeName)
@@ -71,19 +71,19 @@ class SimpleOMObject(object):
                     if cmds.nodeType(parentNode[0]) == 'transform':
 
                         self.transformName = parentNode[0]
-                        self.ShapeName = nodeName
+                        self.shapeName = nodeName
                         self.IsShape = True
                         self.objectType= cmds.nodeType(nodeName)
                         self.coreNodeName= nodeName
                         if cmds.nodeType(nodeName) == 'joint':
                             self.objectType= 'joint'
                             self.transformName = None
-                            self.ShapeName = None
+                            self.shapeName = None
                             self.IsShape = False
                         elif "Constraint" in cmds.nodeType(nodeName):
                             self.objectType= 'constraint'
                             self.transformName = None
-                            self.ShapeName = None
+                            self.shapeName = None
                             self.IsShape = False
                     self.transformName = parentNode[0]
 

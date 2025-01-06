@@ -3,16 +3,58 @@ QPushButton {
     font-weight: bold;
     background-color: #DD6E13;
 }
+
+#NormalModeButton {
+    font-size: 11pt;
+    font-weight: bold;
+    background-color: #3f3f3d;
+    border: 1px solid #c7c7c7;
+}
+#NormalModeButton:hover {
+    background-color: #4f4f4d;
+}
+
+QPushButton[objectName*="CheckedButton"] {
+    font-size: 11pt;
+    font-weight: bold;
+    background-color: #7e2c1e;
+}
+
+QPushButton[objectName*="Help"] {
+    font-size: 11pt;
+    font-weight: bold;
+    background-color: #3f3f3d;
+    border: 1px solid #c7c7c7;
+}
+QPushButton[objectName*="Help"]:hover {
+    background-color: #4f4f4d;
+}
+#resetTextButton {
+    font-size: 11pt;
+    font-weight: bold;
+    background-color: #696969;
+    border: 1px solid #c7c7c7;
+}
+
 QCheckBox {
     font-size: 11pt;
 }
 
 QTableWidget {
     font-size: 11pt;
+   
 }
 
+QHeaderView::section {
+    font-size: 11pt;
+}
 QTableWidget::item {
     text-align: center;
+}
+
+QTabWidget {
+    font-size: 11pt;
+    font-weight: bold;
 }
 
 QListWidget {

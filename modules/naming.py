@@ -44,9 +44,9 @@ def shapeName(nodeList):
     errorNodeList=[]
    
     for node in nodeList:
-        if node.ShapeName :
+        if node.shapeName :
             nodeName= node.selectedNodeName
-            shapeName= node.shortName(node.ShapeName)
+            shapeName= node.shortName(node.shapeName)
             # from back to front
             refNodeName= shapeName.replace('Shape', '', -1)
             if node.shortName(node.selectedNodeName) != refNodeName:

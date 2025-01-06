@@ -12,6 +12,7 @@ class AssetCheckWidgetUI(QWidget):
         
         self.initUI()
         self.createModelCleanUpCheckboxes()
+        self.addManulCheckboxDict()
         self.functionConnect()
 
         self.sceneRelatedColor = QColor(255, 200, 125, 255)
@@ -50,6 +51,7 @@ class AssetCheckWidgetUI(QWidget):
         self.inputTable.selectRow(0)
         self.inputTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.inputTable.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.inputTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Option Group
         self.optionGroup = self.createOptionGroup()
@@ -141,7 +143,11 @@ class AssetCheckWidgetUI(QWidget):
         tab.setLayout(layout)
         scroll.setWidget(tab)
         return scroll
-
+    def addManulCheckboxDict(self):
+        self.allCheckboxesDict["model"]["revNormal"] = self.NormalCheckbox
+        self.allCheckboxesDict["model"]["selfIntersect"] = self.InterSectionCheckbox
+        self.allCheckboxesDict["model"]["objectIntersect"] = self.ObjectInterSectionCheckbox
+        
     def createModelCleanUpCheckboxes(self):
         """Add a divider and two checkboxes to the model tab."""
         modelTab = self.optionTab.widget(self.errorData["model"]["id"])
@@ -151,15 +157,57 @@ class AssetCheckWidgetUI(QWidget):
         divider.setFrameShape(QFrame.HLine)
         divider.setFrameShadow(QFrame.Sunken)
 
-        vertexFreezeCheckbox = QCheckBox("Vertex 값 초기화")
-        vertexFreezeCheckbox.setChecked(True)
+    
+        label = QLabel("[ 수동 점검 체크리스트 ]")
+        label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed))
+        label.setStyleSheet("font-weight: bold; font-size: 13pt;")
+        label.setAlignment(Qt.AlignCenter)
 
-        conformNormalCheckbox = QCheckBox("전체 Conform Normal 적용")
-        conformNormalCheckbox.setChecked(True)
+        checkListLayout = QGridLayout()
+  
+        self.NormalCheckbox = QCheckBox("Normal 뒤집힘 확인")
+        self.NormalCheckbox.setChecked(True)
+        self.NormalModebutton = QPushButton("BackFace Culling Off")
+        self.NormalModebutton.setFixedHeight(30)
+        self.NormalModebutton.setObjectName("NormalModeButton")
+        self.NormalCheckedButton = QPushButton("확인 안함")
+        self.NormalCheckedButton.setFixedHeight(30)
+        self.NormalCheckedButton.setObjectName("NormalCheckedButton")
+      
+        self.InterSectionCheckbox = QCheckBox("자기 자신과 겹침이 있는지 확인")
+        self.InterSectionCheckbox.setChecked(True)
+        self.InterSectionHelpButton = QPushButton("참고 자료 보기")
+        self.InterSectionHelpButton.setFixedHeight(30)
+        self.InterSectionHelpButton.setObjectName("InterSectionHelpButton")
+        self.InterSectionCheckedButton = QPushButton("확인 안함")
+        self.InterSectionCheckedButton.setFixedHeight(30)
+        self.InterSectionCheckedButton.setObjectName("InterSectionCheckedButton")
 
+        self.ObjectInterSectionCheckbox = QCheckBox("다른 오브젝트와 겹침이 있는지 확인")
+        self.ObjectInterSectionCheckbox.setChecked(True)
+        self.ObjectInterSectionHelpButton = QPushButton("참고 자료 보기")
+        self.ObjectInterSectionHelpButton.setFixedHeight(30)
+        self.ObjectInterSectionHelpButton.setObjectName("ObjectInterSectionHelpButton")
+        self.ObjectInterSectionCheckedButton = QPushButton("확인 안함")
+        self.ObjectInterSectionCheckedButton.setFixedHeight(30)
+        self.ObjectInterSectionCheckedButton.setObjectName("ObjectInterSectionCheckedButton")
+   
+        checkListLayout.addWidget(self.NormalCheckbox, 0, 0)
+        checkListLayout.addWidget(self.NormalModebutton, 0, 1)
+        checkListLayout.addWidget(self.NormalCheckedButton, 0, 2)
+        checkListLayout.addWidget(self.InterSectionCheckbox, 1, 0)
+        checkListLayout.addWidget(self.InterSectionHelpButton, 1, 1)
+        checkListLayout.addWidget(self.InterSectionCheckedButton, 1, 2)
+        checkListLayout.addWidget(self.ObjectInterSectionCheckbox, 2, 0)
+        checkListLayout.addWidget(self.ObjectInterSectionHelpButton, 2, 1)
+        checkListLayout.addWidget(self.ObjectInterSectionCheckedButton, 2, 2)
+        
+        
         layout.addWidget(divider)
-        layout.addWidget(vertexFreezeCheckbox)
-        layout.addWidget(conformNormalCheckbox)
+        layout.addWidget(label)
+        layout.addLayout(checkListLayout)
+    
+      
 
     def initRightPanel(self):
         """Initialize the right panel for results."""
@@ -188,8 +236,13 @@ class AssetCheckWidgetUI(QWidget):
         table = QTableWidget()
         table.setObjectName("errorByCriteriaTable")
         table.setColumnCount(1)
-        table.setHorizontalHeaderLabels(["Error Count"])
+        table.setHorizontalHeaderLabels(["Error Count :"])
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # header font size 11 and bold
+        table.horizontalHeader().setStyleSheet("font-size: 11pt; font-weight: bold;")
         table.setSelectionMode(QAbstractItemView.SingleSelection)
+        # 가로 최소 크기는 고정, 세로는 상관 없음음
+        table.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # 열 크기 모드 설정
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
@@ -198,11 +251,12 @@ class AssetCheckWidgetUI(QWidget):
         listWidget = QListWidget()
         listWidget.setObjectName("errorTargetListA")
         listWidget.setSelectionMode(QAbstractItemView.MultiSelection)
+        listWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         layout.addWidget(table)
         layout.addWidget(listWidget)
-        layout.setStretch(0, 3)  # 테이블 확장 비율
-        layout.setStretch(1, 2)  # 리스트 확장 비율
+        layout.setStretch(0, 2)  # 테이블 확장 비율
+        layout.setStretch(1, 3)  # 리스트 확장 비율
         widget.setLayout(layout)
         return widget
 
@@ -211,21 +265,37 @@ class AssetCheckWidgetUI(QWidget):
         layout = QHBoxLayout()
 
         leftLayout = QVBoxLayout()
-        nameFilter = QLineEdit()
-        nameFilter.setObjectName("nameFilterLineEdit")
-        nameFilter.setPlaceholderText("Name Filter")
 
+        nameFilterLayout = QHBoxLayout()
+        self.nameFilter = QLineEdit()
+        self.nameFilter.setFixedHeight(30)
+        self.nameFilter.setObjectName("nameFilterLineEdit")
+        self.nameFilter.setPlaceholderText("Name Filter")
+        self.nameFilter.setStyleSheet("font-size: 11pt;")
+        self.resetTextButton = QPushButton("X")
+        self.resetTextButton.setObjectName("resetTextButton")
+        self.resetTextButton.setFixedWidth(30)
+        self.resetTextButton.setFixedHeight(30)
+        nameFilterLayout.addWidget(self.nameFilter)
+        nameFilterLayout.addWidget(self.resetTextButton)
+  
         listWidget = QListWidget()
         listWidget.setObjectName("errorTargetListB")
+        listWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
-        leftLayout.addWidget(nameFilter)
+        leftLayout.addLayout(nameFilterLayout)
         leftLayout.addWidget(listWidget)
 
         criteriaTree = QTreeWidget()
         criteriaTree.setSelectionMode(QAbstractItemView.MultiSelection)
         criteriaTree.setAlternatingRowColors(True)
+        criteriaTree.setEditTriggers(QAbstractItemView.NoEditTriggers)
         criteriaTree.setObjectName("errorCriteriaTree")
         criteriaTree.setHeaderLabels(["Error Count :"])
+        # header font size 11 and bold 
+        # set center alignment
+        criteriaTree.header().setStyleSheet("font-size: 11pt; font-weight: bold;")
+        criteriaTree.header().setDefaultAlignment(Qt.AlignCenter)
         criteriaTree.setColumnCount(1)
 
         layout.addLayout(leftLayout)
@@ -257,3 +327,9 @@ class AssetCheckWidgetUI(QWidget):
     def functionConnect(self):
         for id, checkbox in self.CategoryCheckboxDict.items():
             checkbox.stateChanged.connect(partial(self.toggleCategory, category_id=id))
+        
+        self.NormalCheckbox.stateChanged.connect(lambda state : self.NormalCheckedButton.setEnabled(state))
+        self.InterSectionCheckbox.stateChanged.connect(lambda state : self.InterSectionCheckedButton.setEnabled(state))
+        self.ObjectInterSectionCheckbox.stateChanged.connect(lambda state : self.ObjectInterSectionCheckedButton.setEnabled(state))
+
+        self.resetTextButton.clicked.connect(lambda: self.nameFilter.clear())
