@@ -61,8 +61,16 @@ class mainWin(QMainWindow):
         self.sceneRelatedCheckBoxList = self.ui.sceneRelatedCheckBoxList
 
         self.setCentralWidget(self.ui)
+        """
         self.resize(1400, 800)
-        self.ui.mainSplitter.setSizes([700, 700])
+        self.ui.mainSplitter.setSizes([700, 700])"""
+        screen_geometry = QGuiApplication.primaryScreen().geometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # 화면 크기에 비례하여 윈도우 크기 설정
+        self.resize(int(screen_width * 0.5), int(screen_height * 0.7))
+        self.ui.mainSplitter.setSizes([int(screen_width * 0.25), int(screen_width * 0.25)])
         self.updateInputTable()
 
         self.uiFuncConnect()
@@ -75,10 +83,16 @@ class mainWin(QMainWindow):
         self.criteriaTable.viewport().installEventFilter(self)
         self.listWidgetA = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListA")
         self.listWidgetA.viewport().installEventFilter(self)
+        self.listWidgetA.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.listWidgetA.customContextMenuRequested.connect(self.showContextMenu)
         self.listWidgetB = self.ui.findWidget(self.ui.errorResultTab, "errorTargetListB")
         self.listWidgetB.viewport().installEventFilter(self)
+        self.listWidgetB.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.listWidgetB.customContextMenuRequested.connect(self.showContextMenu)
         self.treeWidget = self.ui.findWidget(self.ui.errorResultTab, "errorCriteriaTree")
         self.treeWidget.viewport().installEventFilter(self)
+        self.treeWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.treeWidget.customContextMenuRequested.connect(self.showContextMenu)
 
     def uiFuncConnect(self):
         self.ui.inputButton.clicked.connect(self.updateInputTable)
@@ -374,14 +388,13 @@ class mainWin(QMainWindow):
         
   
         # Resize row and column
-       
         criteriaTable.resizeColumnsToContents()
         criteriaTable.resizeRowsToContents()
         criteriaTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
 
         # Connect selection change to update listWidgetA
-        #criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
+        criteriaTable.itemSelectionChanged.connect(self.showErrorTargetByCriteria)
        
         # Step 2: Update errorTargetListA
         criteriaTable.setCurrentCell(0, 0)
@@ -464,7 +477,7 @@ class mainWin(QMainWindow):
         treeWidget.clear()
         errorData= self.errorData["nodes"].get(nodeName, {})
         if not errorData:
-            print("Can't find error data for node:", nodeName)
+            #print("Can't find error data for node:", nodeName)
             return
 
         allErrorCount = len(errorData)
@@ -783,10 +796,121 @@ class mainWin(QMainWindow):
                     if exculdeText in itemText:
                         item.setHidden(True)
                         break
+     # ------------------ Context Menu for Selecting Error Nodes ----------------------
+    def showContextMenu(self, position):
+        """Context menu for listWidget and treeWidget."""
+        widget = self.sender()
+        selectedItems = []
 
-    
+        # Context menu setup
+        menu = QMenu()
+        menu.setFont(QFont("Arial", 11))  # Set font size
+        selectAllAction = menu.addAction("전체 아이템 선택하기")
+        selectCurrentAction = menu.addAction("선택한 것들만 선택하기")
+        
+        # Determine the source widget and filter selected items
+        if isinstance(widget, QListWidget):
+            selectedItems = widget.selectedItems()
+        elif isinstance(widget, QTreeWidget):
+            # 하위 아이템 선택 Action deSelectAllAction 전에 추가
+            selectChildrenAction = menu.addAction("선택한 에러 하위 아이템 선택하기")
+            selectedItems = [item for item in widget.selectedItems() if item.parent() is not None]
+
+        deSelectAllAction = menu.addAction("전체 선택 해제하기")
+
+        # Execute the context menu and handle actions
+        action = menu.exec_(widget.mapToGlobal(position))
+
+        if action == selectCurrentAction:
+            
+            self.selectItemsFromWidget(widget, selectedItems)
+        elif action == selectAllAction:
+            self.selectAllItemsFromWidget(widget)
+        elif action == deSelectAllAction:
+            self.deselectAllItemsFromWidget(widget)
+        elif action == selectChildrenAction:
+            self.selectChildrenInTree()
+
+    def selectItemsFromWidget(self, widget, selectedItems):
+        """Select items in Maya based on the source widget."""
+        if isinstance(widget, QListWidget):
+            # Select nodes from QListWidget
+            nodes = [item.data(Qt.UserRole) for item in selectedItems]
+            if "scene" in nodes:
+                nodes.remove("scene")
+        elif isinstance(widget, QTreeWidget):
+            # Select child-level nodes from QTreeWidget
+            nodes = [item.data(0, Qt.UserRole) or item.text(0) for item in selectedItems]
+
+        if nodes:
+            cmds.select(nodes, replace=True)
+        else:
+            print("선택된 노드가 없습니다.")
+
+    def selectAllItemsFromWidget(self, widget):
+        """Select all items in Maya based on the source widget."""
+        if isinstance(widget, QListWidget):
+            # Select all items in QListWidget
+            widget.selectAll()
+            nodes = [widget.item(i).data(Qt.UserRole) for i in range(widget.count())]
+            if "scene" in nodes:
+                nodes.remove("scene")
+        elif isinstance(widget, QTreeWidget):
+            # Select all child-level items in QTreeWidget
+            allrootItems = widget.invisibleRootItem()
+            treeItems = []
+            
+            nodes = []
+            for i in range(allrootItems.childCount()):
+                topItem = allrootItems.child(i)
+                for j in range(topItem.childCount()):
+                    childItem = topItem.child(j)
+                    childItem.setSelected(True)
+                    treeItems.append(childItem)
+                    nodes.append(childItem.data(0, Qt.UserRole) or childItem.text(0))
+      
+        if nodes:
+            cmds.select(nodes, replace=True)
+        else:
+            print("아이템을 선택할 수 없습니다.")
+
+    def selectChildrenInTree(self):
+        # get selected top level item
+        topLevelItems = []
+        treeWidget = self.treeWidget
+        for item in treeWidget.selectedItems():
+            if item.parent() is None:
+                topLevelItems.append(item)
+        # get all children of selected top level item
+        allChildren = []
+        for item in topLevelItems:
+            for i in range(item.childCount()):
+                childItem = item.child(i)
+                childItem.setSelected(True)
+                allChildren.append(childItem)
+        # get all nodes from children
+        nodes = [child.data(0, Qt.UserRole) or child.text(0) for child in allChildren]
+        if nodes:
+            cmds.select(nodes, replace=True)
+        else:
+            print("선택된 아이템이 없습니다.")
 
 
+    def deselectAllItemsFromWidget(self, widget):
+        """Deselect all items in Maya based on the source widget."""
+        if isinstance(widget, QListWidget):
+            # Deselect all items in QListWidget
+            widget.clearSelection()
+        elif isinstance(widget, QTreeWidget):
+            # Deselect all items in QTreeWidget
+            allrootItems = widget.invisibleRootItem()
+            for i in range(allrootItems.childCount()):
+                topItem = allrootItems.child(i)
+                topItem.setSelected(False)
+                for j in range(topItem.childCount()):
+                    childItem = topItem.child(j)
+                    childItem.setSelected(False)
+        cmds.select(clear=True)
 def run():
     if cmds.window("AssetCheck_win", exists=True):
         cmds.deleteUI("AssetCheck_win")

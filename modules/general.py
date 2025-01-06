@@ -38,17 +38,22 @@ def unfreezeTransform(nodeList):
         unfreezeAttrList = []
         for att in translateAttList:
             
-            if cmds.getAttr(nodeName+'.'+att)!=0:
+            if cmds.getAttr(nodeName+'.'+att)!=0.0:
                 isErrorWithNode=True
                 unfreezeAttrList.append(nodeName +'.'+ att)
         for att in rotateAttList:
-            if cmds.getAttr(nodeName+'.'+att)!=0:
+            if cmds.getAttr(nodeName+'.'+att)!=0.0:
                 isErrorWithNode=True
                 unfreezeAttrList.append(nodeName +'.'+ att)
         for att in scaleAttList:
-            if cmds.getAttr(nodeName+'.'+att)!=1:
-                isErrorWithNode=True
-                unfreezeAttrList.append(nodeName +'.'+ att)
+            sizeValue = cmds.getAttr(nodeName + '.' + att)
+            roundedValue = round(sizeValue, 6)  # 소수점 아래 6자리에서 반올림
+            
+            if roundedValue != 1.0:
+                print(roundedValue)
+                isErrorWithNode = True
+                unfreezeAttrList.append(nodeName + '.' + att)
+            
         if isErrorWithNode:
             errorNodeList.append(node)
             AllunfreezeAttrList.append(unfreezeAttrList)
