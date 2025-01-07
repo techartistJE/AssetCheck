@@ -50,7 +50,7 @@ def unfreezeTransform(nodeList):
             roundedValue = round(sizeValue, 6)  # 소수점 아래 6자리에서 반올림
             
             if roundedValue != 1.0:
-                print(roundedValue)
+
                 isErrorWithNode = True
                 unfreezeAttrList.append(nodeName + '.' + att)
             

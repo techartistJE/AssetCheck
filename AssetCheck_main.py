@@ -10,7 +10,7 @@ import sys
 import os
 import json
 
-import re
+import fnmatch
 
 try:
     RootDir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -494,15 +494,25 @@ class mainWin(QMainWindow):
             topLevelItem.setTextAlignment(0, Qt.AlignCenter)
             treeWidget.addTopLevelItem(topLevelItem)
 
-
+            # 단일 리스트로 맞춰주기 : string -> [string] / [[string]] -> [string]
             if not isinstance(details, list):
                 details = [details]
+
+            if isinstance(details, list):
+                if details and isinstance(details[0], list):
+                    details =[]
+                    for detail in details:
+                        details.extend(detail)
 
             for detail in details:
                 childItem = QTreeWidgetItem()
                 
                 detailPath = detail
-                shortPath= detailPath.split("|")[-1]
+                if "|" in detailPath:
+                    shortPath= detailPath.split("|")[-1]
+                else:
+                    shortPath= detailPath
+
                 childItem.setData(0, Qt.UserRole, detailPath)
                 childItem.setData(0, Qt.UserRole + 1, shortPath)
                 childItem.setText(0, shortPath if self.is_short_path_tree else detailPath)
@@ -764,38 +774,49 @@ class mainWin(QMainWindow):
             buttonWidget.setStyleSheet("background-color: #7e2c1e;")
 
     def filterItemsInList(self, listWidget, filterText):
-        if not filterText:  # filterText가 빈 문자열이거나 None일 경우
+        # 필터 텍스트가 없거나 공백만 포함하는 경우 모든 항목 표시
+        if not filterText.strip():
             for i in range(listWidget.count()):
                 listWidget.item(i).setHidden(False)
             return
-        # 공백은 서로 다른 글자
-        # 앞에 -가 붙은 건 한 번 filtered 된 것 중 제외
-        # 기본으로 쓴 text 앞 뒤로 *를 붙여줌
-        # '*'를 정규표현식의 '.*'로 변환
-        allFilterText = filterText.split()
-        regexPatternTextList= []
-        exculdeTextList= []
-        for text in allFilterText:
-            if text[0] == "-":
-                exculdeTextList.append( text[1:] )
-                continue
-            withWildcardText = "*" + text + "*"
-            regexPatternTextList.append(re.escape(withWildcardText).replace(r'\*', '.*'))
 
-        for text in regexPatternTextList:
-            regexPatternText = text
-            regex = re.compile(f"^{regexPatternText}$", re.IGNORECASE)
-            for i in range(listWidget.count()):
-                item = listWidget.item(i)
-                itemText = item.text()
-                if regex.match(itemText):  # 정규표현식으로 매칭
-                    item.setHidden(False)
+        # 필터 텍스트 분리
+        allFilterText = filterText.split()
+        includePatterns = []
+        excludePatterns = []
+
+        for text in allFilterText:
+            if text.startswith("-"):
+                excludePatterns.append(text[1:])
+            else:
+                includePatterns.append(text)
+        
+        # pattern에 앞 뒤로 * 붙이기
+        includePatterns = [f"*{pattern}*" for pattern in includePatterns]
+        excludePatterns = [f"*{pattern}*" for pattern in excludePatterns]
+
+        # 필터링
+        for i in range(listWidget.count()):
+            item = listWidget.item(i)
+            text = item.text()
+            isHidden = True
+
+            for pattern in includePatterns:
+                if fnmatch.fnmatch(text, pattern):
+                    isHidden = False
+                    break
                 else:
-                    item.setHidden(True)
-                for exculdeText in exculdeTextList:
-                    if exculdeText in itemText:
-                        item.setHidden(True)
-                        break
+                    isHidden = True
+                    
+
+            for pattern in excludePatterns:
+                if fnmatch.fnmatch(text, pattern):
+                    isHidden = True
+                    break
+
+            item.setHidden(isHidden)
+            
+       
      # ------------------ Context Menu for Selecting Error Nodes ----------------------
     def showContextMenu(self, position):
         """Context menu for listWidget and treeWidget."""
@@ -807,7 +828,10 @@ class mainWin(QMainWindow):
         menu.setFont(QFont("Arial", 11))  # Set font size
         selectAllAction = menu.addAction("전체 아이템 선택하기")
         selectCurrentAction = menu.addAction("선택한 것들만 선택하기")
-        
+
+        # Initialize selectChildrenAction to avoid unbound error
+        selectChildrenAction = None
+
         # Determine the source widget and filter selected items
         if isinstance(widget, QListWidget):
             selectedItems = widget.selectedItems()
@@ -822,7 +846,6 @@ class mainWin(QMainWindow):
         action = menu.exec_(widget.mapToGlobal(position))
 
         if action == selectCurrentAction:
-            
             self.selectItemsFromWidget(widget, selectedItems)
         elif action == selectAllAction:
             self.selectAllItemsFromWidget(widget)
@@ -830,6 +853,7 @@ class mainWin(QMainWindow):
             self.deselectAllItemsFromWidget(widget)
         elif action == selectChildrenAction:
             self.selectChildrenInTree()
+
 
     def selectItemsFromWidget(self, widget, selectedItems):
         """Select items in Maya based on the source widget."""
