@@ -61,15 +61,13 @@ class mainWin(QMainWindow):
         self.sceneRelatedCheckBoxList = self.ui.sceneRelatedCheckBoxList
 
         self.setCentralWidget(self.ui)
-        """
-        self.resize(1400, 800)
-        self.ui.mainSplitter.setSizes([700, 700])"""
+  
         screen_geometry = QGuiApplication.primaryScreen().geometry()
         screen_width = screen_geometry.width()
         screen_height = screen_geometry.height()
 
         # 화면 크기에 비례하여 윈도우 크기 설정
-        self.resize(int(screen_width * 0.5), int(screen_height * 0.7))
+        self.resize(int(screen_width * 0.5), int(screen_height * 0.5))
         self.ui.mainSplitter.setSizes([int(screen_width * 0.25), int(screen_width * 0.25)])
         self.updateInputTable()
 
