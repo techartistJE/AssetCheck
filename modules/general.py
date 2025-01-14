@@ -2,27 +2,6 @@
 import maya.cmds as cmds
 
 
-def topGroup(_inputList):
-    # get top node List
-    AlltopNodeList= cmds.ls(assemblies=True)
- 
-    topGroupList=[]
-    for topNode in AlltopNodeList:
-        shapeNode= cmds.listRelatives(topNode, shapes=True)
-        if not shapeNode and cmds.nodeType(topNode) == 'transform':
-            topGroupList.append(topNode)
-
-    if len(topGroupList)==0:
-        cmds.warning("There is no topGroup")
-        return(False, None)
-
-    elif len(topGroupList)==1:
-
-        return (True, topGroupList[0])
-    else:
-        cmds.warning("There are multiple topGroup")
-        return(False, None)
-
 def unfreezeTransform(nodeList):
     # check if the transform node is frozen
     # 노드 리스트 중 transform 노드가 frozen 되어 있는지 확인
@@ -146,6 +125,36 @@ def animKey(nodeList):
             errorCount+=1
 
     return(errorCount, errorNodeList)
+
+def topGroup(_inputList):
+    # check if there is a top (null) group in the scene
+    # 최상위 그룹이 있는지 확인
+    topNodeList = cmds.ls(assemblies=True)
+    defaultCameras = {"persp", "top", "front", "side"}
+    topNodeList = [node for node in topNodeList if node not in defaultCameras]
+    
+
+    if len(topNodeList) > 1:
+        return (1, ["scene"], topNodeList)
+    elif len(topNodeList) == 1:
+        if cmds.nodeType(topNodeList[0]) == "transform" and not cmds.listRelatives(topNodeList[0], shapes=True):
+            # 현재 파일명 가져오기
+            sceneName = cmds.file(q=True, sceneName=True)
+            # 파일명에서 경로 제거
+            sceneName = sceneName.split("/")[-1]
+            assetName = sceneName.split("_mod")[0]
+            if topNodeList[0] == assetName:
+                return (0, None)
+            else:
+                return (1, ["scene"], topNodeList)
+           
+        else:
+            return (1, ["scene"], topNodeList)
+        
+    else:
+        return (1, ["scene"], None)
+    
+
 
 def layer( _inputList ):
     # check if there are layers in the scene

@@ -200,6 +200,40 @@ class mainWin(QMainWindow):
             return True
         else:
             return False
+        
+    def checkExistNode(self, inputList):
+        # before check run, check if the node exists
+        error = False
+        allNodeList = []
+        for group in inputList:
+            for node in group:
+                allNodeList.append(node)
+
+        for node in allNodeList:
+            nodeName = node.selectedNodeName
+            if not cmds.objExists(nodeName):
+                error = True
+                break
+        #  경고창 윈도우 띄우기
+        if error:
+            warningWin= QMessageBox()
+            message= "삭제되거나 이름이 변경된 노드가 있습니다.\n노드를 재입력 후 다시 시도해주세요."
+            warningWin.setWindowTitle("Warning")
+            # warningWin size
+            warningWin.setFixedSize(400, 150)
+            # set font style and size
+            # set font bold
+            warningWin.setFont(QFont("Arial", 12))
+            warningWin.setStyleSheet("font-weight: bold;")
+            warningWin.setText(message)
+            # window position center of the self window
+        
+            warningWin.move(self.x() + self.width() / 2 - warningWin.width() / 2, self.y() + self.height() / 2 - warningWin.height() / 2)
+            warningWin.exec_()
+
+        return error
+            
+        
 
 
     def nodeFilter(self, inputNodeList):
@@ -237,7 +271,10 @@ class mainWin(QMainWindow):
             inputList = self.AllInputList
         else:
             inputList = self.selInputList
-    
+
+        if self.checkExistNode(inputList):
+            return
+
         # Steop 0: errorData 초기화
         self.errorData = loadJsonData(errorDataPath)["errorData"]
         self.initManualErrorData()
@@ -606,6 +643,7 @@ class mainWin(QMainWindow):
                 "pivot": (general.pivotAtWorldCenter, slice(None, -1)),  # Exclude last element
                 "history": (general.history, slice(None, -1)),  # Exclude last element
                 "animkey": (general.animKey, None),  # Use full list
+                "topGroup": (general.topGroup, None),  # Use full list
                 "layer": (general.layer, None),  # Use full list
                 "hidden": (general.hidden, None),  # Use full list
                 "defaultMaterial": (general.onlyDefaultMaterial, None),  # Use full list
